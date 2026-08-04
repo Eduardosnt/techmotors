@@ -43,14 +43,29 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
 // ─── RATE LIMITING ──────────────────────────────────
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
+function getRateLimitKey(req: Request) {
+  const forwarded = req.headers['x-forwarded-for'];
+  const ip = Array.isArray(forwarded)
+    ? forwarded[0]
+    : typeof forwarded === 'string'
+      ? forwarded.split(',')[0].trim()
+      : req.ip || req.socket.remoteAddress || 'unknown';
+
+  const email = typeof req.body?.email === 'string'
+    ? req.body.email.toLowerCase().trim()
+    : '';
+
+  return email ? `${ip}:${email}` : ip;
+}
+
 function rateLimit(maxRequests: number, windowMs: number) {
   return (req: Request, res: Response, next: NextFunction) => {
-    const ip = req.ip || req.socket.remoteAddress || 'unknown';
+    const key = getRateLimitKey(req);
     const now = Date.now();
-    const record = rateLimitStore.get(ip);
+    const record = rateLimitStore.get(key);
 
     if (!record || now > record.resetTime) {
-      rateLimitStore.set(ip, { count: 1, resetTime: now + windowMs });
+      rateLimitStore.set(key, { count: 1, resetTime: now + windowMs });
       next();
     } else if (record.count < maxRequests) {
       record.count++;
@@ -107,9 +122,9 @@ app.use((req: Request, _res: Response, next: NextFunction) => {
 app.use(express.static(path.join(__dirname, '../../frontend')));
 
 // Rate limit nas rotas sensíveis
-app.use('/api/auth/login', rateLimit(5, 15 * 60 * 1000)); // 5 tentativas por 15min
-app.use('/api/auth/esqueci-senha', rateLimit(3, 60 * 60 * 1000)); // 3 por hora
-app.use('/api/auth/cadastro', rateLimit(5, 60 * 60 * 1000)); // 5 por hora
+app.use('/api/auth/login', rateLimit(10, 15 * 60 * 1000)); // 10 tentativas por 15min
+app.use('/api/auth/esqueci-senha', rateLimit(5, 60 * 60 * 1000)); // 5 por hora
+app.use('/api/auth/cadastro', rateLimit(8, 60 * 60 * 1000)); // 8 por hora
 
 // Rotas da API
 app.use('/api/auth', authRoutes);

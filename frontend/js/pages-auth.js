@@ -36,6 +36,12 @@ function renderLogin(el) {
 
   document.getElementById('form-login').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const btn = document.querySelector('#form-login button[type="submit"]');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Entrando...';
+    }
+
     try {
       const data = await api('/auth/login', {
         method: 'POST',
@@ -52,6 +58,11 @@ function renderLogin(el) {
       else if (data.user.tipo === 'admin') navegarPara('admin-dashboard');
     } catch (err) {
       showToast(err.error || 'Erro ao fazer login', 'error');
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = 'Entrar';
+      }
     }
   });
 }
@@ -135,6 +146,12 @@ function renderCadastro(el, params) {
 
   document.getElementById('form-cadastro').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const btn = document.querySelector('#form-cadastro button[type="submit"]');
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Criando conta...';
+    }
+
     const errosDiv = document.getElementById('erros-cadastro');
     errosDiv.innerHTML = '';
     const tipo = document.getElementById('cad-tipo').value;
@@ -193,6 +210,11 @@ function renderCadastro(el, params) {
         errosDiv.innerHTML = err.errors.map(e => `<div class="alert alert-danger py-2">${escapeHtml(e)}</div>`).join('');
       } else {
         errosDiv.innerHTML = `<div class="alert alert-danger">${escapeHtml(err.error || 'Erro ao cadastrar')}</div>`;
+      }
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = 'Criar Conta';
       }
     }
   });
