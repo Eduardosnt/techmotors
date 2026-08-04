@@ -1,56 +1,87 @@
-# TechMotors — Plataforma de Agendamentos Automotivos (Node.js + TypeScript)
+# TechMotors — Plataforma de Agendamentos Automotivos
 
-Versão moderna do TechMotors com backend em **Node.js + TypeScript + Express** e frontend em **HTML + CSS + JavaScript**.
+Sistema web completo para agendamento de serviços automotivos, conectando clientes a oficinas mecânicas.
 
-## Stack
+## Stack Tecnológica
 
-- **Backend**: Node.js + Express + TypeScript
-- **Banco de Dados**: MySQL 5.7+
-- **Frontend**: HTML5 + CSS3 + JavaScript (SPA com hash routing)
-- **Autenticação**: JWT (JSON Web Token)
-- **UI**: Bootstrap 5 + Bootstrap Icons
+| Camada | Tecnologia |
+|--------|-----------|
+| Backend | Node.js + Express + TypeScript |
+| Banco de Dados | SQLite (better-sqlite3) |
+| Frontend | HTML5 + CSS3 + JavaScript (SPA) |
+| Autenticação | JWT + bcrypt |
+| UI | Bootstrap 5 + Bootstrap Icons |
+| E-mail | Nodemailer (Gmail SMTP) |
+| Upload | Multer |
+
+## Funcionalidades
+
+### Cliente
+- Busca de oficinas por serviço, categoria e geolocalização
+- Agendamento em 4 passos (serviço → data/hora → veículo → confirmação)
+- Histórico de serviços por veículo
+- Favoritar oficinas
+- Avaliações (1-5 estrelas + comentário)
+- Notificações em tempo real
+- Comprovante/recibo para impressão
+- Chat com bot + atendente da oficina
+- Gerenciamento de veículos (placa antiga e Mercosul)
+- Tema claro/escuro/sistema
+
+### Oficina
+- Agenda semanal visual com detalhes ao clicar
+- Confirmar/recusar/concluir agendamentos
+- Configuração de disponibilidade e bloqueios
+- Gerenciamento de serviços e preços
+- Painel de métricas (dashboard + receita + histórico)
+- Chat com clientes
+- Notificações de novos agendamentos
+
+### Administrador
+- Dashboard com estatísticas completas
+- Aprovação/rejeição de oficinas
+- Gestão de usuários (busca, filtros, detalhes, bloquear)
+- Catálogo global de serviços
+- Ranking de oficinas (por nota e volume)
+- Moderação de avaliações
+- Notificações
+
+### Segurança
+- Rate limiting (login, cadastro, recuperação de senha)
+- Headers HTTP de segurança (CSP, X-Frame-Options, etc.)
+- Sanitização de inputs contra XSS
+- Prepared statements contra SQL injection
+- Política de senha forte
+- Recuperação de senha por e-mail com token temporário
+- Upload com validação de tipo e tamanho
 
 ## Como Rodar
 
 ### Pré-requisitos
-- Node.js 18+ instalado
-- MySQL rodando (XAMPP ou standalone)
-- Banco `techmotors` criado com o schema.sql
+- Node.js 18+
 
-### 1. Criar o banco de dados
-
-Importe o schema no MySQL:
-```bash
-mysql -u root -p < database/schema.sql
-```
-Ou via phpMyAdmin: Importar → `database/schema.sql`
-
-### 2. Instalar dependências do backend
+### Instalação
 
 ```bash
 cd backend
 npm install
 ```
 
-### 3. Ajustar senhas dos usuários teste
+### Configuração (opcional)
 
+Copie `.env.example` para `.env` e preencha:
 ```bash
-cd backend
-npm run setup
+cp .env.example .env
 ```
 
-### 4. Iniciar o servidor
+### Iniciar
 
 ```bash
 cd backend
 npm run dev
 ```
 
-O servidor inicia em **http://localhost:3000**
-
-### 5. Acessar o site
-
-Abra http://localhost:3000 no navegador.
+Acesse **http://localhost:3000**
 
 ## Contas de Teste
 
@@ -67,91 +98,52 @@ Abra http://localhost:3000 no navegador.
 
 ```
 techmotors/
-├── backend/                 API REST Node.js + TypeScript
+├── backend/
 │   ├── src/
-│   │   ├── server.ts       Entry point do servidor
-│   │   ├── config/
-│   │   │   └── database.ts Conexão MySQL (pool)
-│   │   ├── middleware/
-│   │   │   └── auth.ts     JWT + controle de acesso
-│   │   ├── routes/
-│   │   │   ├── auth.ts     Login, cadastro, validações
-│   │   │   ├── cliente.ts  Busca, agendamento, veículos, avaliações
-│   │   │   ├── oficina.ts  Agenda, solicitações, serviços, métricas
-│   │   │   └── admin.ts    Dashboard, aprovações, gestão de usuários
-│   │   └── setup.ts        Script de reset de senhas
+│   │   ├── server.ts            Servidor + middlewares de segurança
+│   │   ├── config/database.ts   SQLite + schema + seed
+│   │   ├── middleware/auth.ts   JWT + controle de acesso
+│   │   └── routes/
+│   │       ├── auth.ts          Login, cadastro, perfil, foto, reset senha
+│   │       ├── cliente.ts       Busca, agendamento, veículos, favoritos, histórico
+│   │       ├── oficina.ts       Agenda, solicitações, métricas, notificações
+│   │       ├── admin.ts         Dashboard, aprovações, catálogo, ranking, moderação
+│   │       └── chat.ts          Chatbot + mensagens cliente↔oficina
+│   ├── data/                    Banco SQLite (auto-gerado)
+│   ├── .env.example             Variáveis de ambiente
 │   ├── package.json
 │   └── tsconfig.json
-├── frontend/                SPA (Single Page Application)
-│   ├── index.html          HTML único (SPA)
-│   ├── css/
-│   │   └── style.css       Estilos customizados
+├── frontend/
+│   ├── index.html               SPA (Single Page Application)
+│   ├── css/style.css            Design system + tema escuro
+│   ├── uploads/                 Fotos de perfil
 │   └── js/
-│       ├── api.js          Helper HTTP + formatação + utilitários
-│       ├── app.js          Router (hash-based) + navbar
-│       ├── pages-auth.js   Login + Cadastro
-│       ├── pages-cliente.js Telas do cliente
-│       ├── pages-oficina.js Telas da oficina
-│       └── pages-admin.js  Telas do admin
-├── database/
-│   └── schema.sql          DDL + dados de teste (MySQL)
-└── config/
-    └── db.php              (legado PHP — pode ignorar)
+│       ├── api.js               HTTP helper + utilitários
+│       ├── app.js               Router + navbar + tema
+│       ├── chat-widget.js       Widget de chat flutuante
+│       ├── pages-auth.js        Login, cadastro, perfil, recuperação
+│       ├── pages-cliente.js     Todas as telas do cliente
+│       ├── pages-oficina.js     Todas as telas da oficina
+│       └── pages-admin.js       Todas as telas do admin
+├── docs/
+│   ├── 01-DER-banco-de-dados.md
+│   ├── 02-casos-de-uso.md
+│   ├── 03-documentacao-api.md
+│   ├── 04-telas-do-sistema.md
+│   ├── 05-justificativa-problema.md
+│   └── 06-seguranca.md
+└── README.md
 ```
 
-## API REST - Endpoints
+## Documentação
 
-### Autenticação
-- `POST /api/auth/login` — Login (retorna JWT)
-- `POST /api/auth/cadastro` — Cadastro de cliente ou oficina
-- `GET /api/auth/me` — Dados do usuário logado
-
-### Cliente (requer token + tipo=cliente)
-- `GET /api/cliente/home` — Categorias + oficinas destaques
-- `GET /api/cliente/busca?q=&categoria=&cidade=` — Buscar oficinas
-- `GET /api/cliente/oficina/:id` — Detalhes da oficina
-- `GET /api/cliente/horarios?oficina_id=&data=&duracao=` — Slots disponíveis
-- `POST /api/cliente/agendar` — Criar agendamento
-- `GET /api/cliente/agendamentos` — Listar agendamentos
-- `POST /api/cliente/cancelar/:id` — Cancelar agendamento
-- `GET /api/cliente/veiculos` — Listar veículos
-- `POST /api/cliente/veiculos` — Cadastrar veículo
-- `DELETE /api/cliente/veiculos/:id` — Remover veículo
-- `POST /api/cliente/avaliar` — Avaliar serviço concluído
-
-### Oficina (requer token + tipo=oficina)
-- `GET /api/oficina/status` — Status da aprovação
-- `GET /api/oficina/perfil` — Dados do perfil
-- `PUT /api/oficina/perfil` — Atualizar perfil
-- `GET /api/oficina/agenda?inicio=` — Agenda semanal
-- `GET /api/oficina/solicitacoes?status=` — Agendamentos por status
-- `POST /api/oficina/solicitacoes/:id/acao` — Confirmar/recusar/concluir
-- `GET /api/oficina/disponibilidade` — Horários semanais
-- `PUT /api/oficina/disponibilidade` — Salvar disponibilidade
-- `GET /api/oficina/bloqueios` — Listar bloqueios
-- `POST /api/oficina/bloqueios` — Criar bloqueio
-- `DELETE /api/oficina/bloqueios/:id` — Remover bloqueio
-- `GET /api/oficina/servicos` — Serviços oferecidos + catálogo
-- `POST /api/oficina/servicos` — Adicionar serviço
-- `DELETE /api/oficina/servicos/:id` — Remover serviço
-- `GET /api/oficina/metricas` — Indicadores e métricas
-
-### Admin (requer token + tipo=admin)
-- `GET /api/admin/dashboard` — Indicadores gerais
-- `GET /api/admin/pendentes` — Oficinas aguardando aprovação
-- `GET /api/admin/oficina/:id` — Detalhes da oficina
-- `POST /api/admin/aprovar/:id` — Aprovar oficina
-- `POST /api/admin/rejeitar/:id` — Rejeitar oficina
-- `GET /api/admin/usuarios?tipo=` — Listar usuários
-- `PUT /api/admin/usuarios/:id/status` — Alterar status
-
-## Configuração de Banco
-
-Edite `backend/src/config/database.ts` se precisar alterar:
-- Host (padrão: localhost)
-- Usuário (padrão: root)
-- Senha (padrão: vazia)
-- Nome do banco (padrão: techmotors)
+A pasta `docs/` contém documentação completa para o TCC:
+- **DER** — Diagrama de banco com 12 tabelas e relacionamentos
+- **Casos de Uso** — 39 casos de uso por ator
+- **API REST** — Todas as rotas documentadas
+- **Telas** — Guia de 38 telas com credenciais
+- **Justificativa** — Problema, solução, objetivos, metodologia
+- **Segurança** — Mecanismos implementados e conformidade LGPD
 
 ## Autores
 
