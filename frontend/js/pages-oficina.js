@@ -1,5 +1,144 @@
 // Oficina Pages
 
+// ─── MENSAGENS DA OFICINA ───────────────────────────
+async function renderOficinaMensagens(el) {
+  el.innerHTML = '<div class="loading">Carregando mensagens...</div>';
+
+  try {
+    const data = await api('/chat/conversas');
+
+    if (!data.conversas.length) {
+      el.innerHTML = `
+        <h5 class="fw-bold mb-4"><i class="bi bi-chat-left-text text-tm-primary"></i> Mensagens</h5>
+        <div class="empty-state">
+          <i class="bi bi-chat-square-text"></i>
+          <p>Nenhuma mensagem ainda</p>
+          <small class="text-muted">Quando clientes pedirem para falar com um atendente, as conversas aparecerão aqui.</small>
+        </div>`;
+      return;
+    }
+
+    const conversasHtml = data.conversas.map(c => `
+      <div class="card p-3 mb-2 conversa-item" style="cursor:pointer" data-id="${c.id}">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <strong>${escapeHtml(c.cliente_nome)}</strong>
+            <span class="badge bg-${c.status === 'atendente' ? 'success' : 'secondary'} ms-2">${c.status === 'atendente' ? 'Ativa' : 'Encerrada'}</span>
+          </div>
+          <small class="text-muted">${c.ultima_msg_em ? new Date(c.ultima_msg_em).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : ''}</small>
+        </div>
+        ${c.ultima_msg ? `<div class="small text-muted mt-1 text-truncate" style="max-width:300px">${escapeHtml(c.ultima_msg)}</div>` : ''}
+      </div>`).join('');
+
+    el.innerHTML = `
+      <h5 class="fw-bold mb-4"><i class="bi bi-chat-left-text text-tm-primary"></i> Mensagens</h5>
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div id="lista-conversas">${conversasHtml}</div>
+        </div>
+        <div class="col-md-8">
+          <div id="painel-conversa" class="card p-0 overflow-hidden" style="height:500px;display:flex;flex-direction:column">
+            <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+              <div class="text-center">
+                <i class="bi bi-chat-square-text" style="font-size:3rem;opacity:.3"></i>
+                <p class="mt-2 small">Selecione uma conversa</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+    // Click handler for conversations
+    document.querySelectorAll('.conversa-item').forEach(item => {
+      item.addEventListener('click', () => {
+        document.querySelectorAll('.conversa-item').forEach(i => i.style.borderColor = '');
+        item.style.borderColor = 'var(--tm-primary)';
+        abrirConversaOficina(parseInt(item.dataset.id));
+      });
+    });
+  } catch (err) {
+    el.innerHTML = `<div class="alert alert-danger">Erro: ${escapeHtml(err.message || err.error || 'Erro')}</div>`;
+  }
+}
+
+let oficinaChatPolling = null;
+
+async function abrirConversaOficina(conversaId) {
+  const painel = document.getElementById('painel-conversa');
+  painel.innerHTML = '<div class="chat-loading"><span class="spinner-border spinner-border-sm"></span> Carregando...</div>';
+
+  try {
+    const data = await api(`/chat/mensagens/${conversaId}`);
+    const isAtiva = data.conversa.status === 'atendente';
+
+    const msgsHtml = data.mensagens.map(m => {
+      let avatar = '';
+      let cssClass = '';
+      if (m.remetente === 'cliente') { avatar = '<i class="bi bi-person"></i>'; cssClass = 'chat-msg-cliente'; }
+      else if (m.remetente === 'bot') { avatar = '<i class="bi bi-robot"></i>'; cssClass = 'chat-msg-bot'; }
+      else { avatar = '<i class="bi bi-building"></i>'; cssClass = 'chat-msg-oficina'; }
+
+      const html = escapeHtml(m.conteudo).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
+      const time = new Date(m.criado_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+      return `<div class="chat-msg ${cssClass}">
+        <div class="chat-msg-avatar">${avatar}</div>
+        <div class="chat-msg-content">
+          <div class="chat-msg-bubble">${html}</div>
+          <div class="chat-msg-time">${time}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    painel.innerHTML = `
+      <div class="chat-messages" id="oficina-chat-msgs" style="flex:1;overflow-y:auto;padding:1rem">${msgsHtml}</div>
+      ${isAtiva ? `
+      <div class="chat-input-area" style="border-top:1px solid var(--tm-gray-200);padding:.75rem 1rem">
+        <form id="oficina-chat-form" class="d-flex gap-2">
+          <input type="text" id="oficina-chat-input" class="form-control" placeholder="Responder ao cliente..." autocomplete="off">
+          <button type="submit" class="btn btn-tm-primary chat-send-btn"><i class="bi bi-send-fill"></i></button>
+        </form>
+      </div>` : `
+      <div class="text-center py-3 bg-light small text-muted">Conversa encerrada</div>`}`;
+
+    // Scroll to bottom
+    const msgs = document.getElementById('oficina-chat-msgs');
+    msgs.scrollTop = msgs.scrollHeight;
+
+    // Send handler
+    document.getElementById('oficina-chat-form')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('oficina-chat-input');
+      const msg = input.value.trim();
+      if (!msg) return;
+      input.value = '';
+
+      try {
+        await api('/chat/mensagem', { method: 'POST', body: { conversa_id: conversaId, conteudo: msg } });
+        abrirConversaOficina(conversaId);
+      } catch (err) {
+        showToast('Erro ao enviar mensagem', 'error');
+      }
+    });
+
+    // Polling for new messages
+    if (oficinaChatPolling) clearInterval(oficinaChatPolling);
+    if (isAtiva) {
+      oficinaChatPolling = setInterval(async () => {
+        try {
+          const fresh = await api(`/chat/mensagens/${conversaId}`);
+          const container = document.getElementById('oficina-chat-msgs');
+          if (container && fresh.mensagens.length > container.querySelectorAll('.chat-msg').length) {
+            abrirConversaOficina(conversaId);
+          }
+        } catch(e) {}
+      }, 5000);
+    }
+  } catch (err) {
+    painel.innerHTML = `<div class="alert alert-danger m-3">Erro ao carregar conversa</div>`;
+  }
+}
+
 async function renderOficinaAguardando(el) {
   el.innerHTML = '<div class="loading">Carregando...</div>';
   const data = await api('/oficina/status');
@@ -20,6 +159,95 @@ async function renderOficinaAguardando(el) {
         </ul>
       </div>
     </div></div></div>`;
+}
+
+async function verDetalheAgendamento(id) {
+  const modal = new bootstrap.Modal(document.getElementById('modal-detalhe-agenda'));
+  modal.show();
+  const body = document.getElementById('modal-detalhe-agenda-body');
+  body.innerHTML = '<div class="loading">Carregando...</div>';
+
+  try {
+    const data = await api(`/oficina/agendamento/${id}`);
+    const a = data.agendamento;
+    const dataFmt = new Date(a.data_hora).toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const horaFmt = new Date(a.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    body.innerHTML = `
+      <div class="mb-3 d-flex justify-content-between align-items-center">
+        <span class="small text-muted">#${String(a.id).padStart(5, '0')}</span>
+        ${badgeStatus(a.status)}
+      </div>
+
+      <div class="rounded-3 p-3 mb-3" style="background:var(--tm-gray-50)">
+        <h6 class="fw-bold small mb-2"><i class="bi bi-person"></i> Cliente</h6>
+        <div class="fw-semibold">${escapeHtml(a.cliente_nome)}</div>
+        ${a.cliente_telefone ? `<div class="small text-muted"><i class="bi bi-telephone"></i> ${escapeHtml(a.cliente_telefone)}</div>` : ''}
+        <div class="small text-muted"><i class="bi bi-envelope"></i> ${escapeHtml(a.cliente_email)}</div>
+      </div>
+
+      <div class="rounded-3 p-3 mb-3" style="background:var(--tm-gray-50)">
+        <h6 class="fw-bold small mb-2"><i class="bi bi-tools"></i> Serviço</h6>
+        <div class="fw-semibold">${escapeHtml(a.servico)}</div>
+        <div class="small text-muted">${escapeHtml(a.categoria)} · ~${a.duracao_minutos} min</div>
+        <div class="fw-bold mt-1">${fmtMoney(a.valor_estimado)}</div>
+      </div>
+
+      <div class="rounded-3 p-3 mb-3" style="background:var(--tm-gray-50)">
+        <h6 class="fw-bold small mb-2"><i class="bi bi-car-front"></i> Veículo</h6>
+        <div class="fw-semibold">${escapeHtml(a.marca)} ${escapeHtml(a.modelo)} ${a.ano || ''}</div>
+        <div class="placa-badge mt-1">${escapeHtml(a.placa)}</div>
+      </div>
+
+      <div class="row g-3 mb-3">
+        <div class="col-6">
+          <div class="small text-muted">Data</div>
+          <div class="fw-semibold">${dataFmt}</div>
+        </div>
+        <div class="col-6">
+          <div class="small text-muted">Horário</div>
+          <div class="fw-semibold">${horaFmt}</div>
+        </div>
+      </div>
+
+      ${a.status === 'solicitado' ? `
+      <div class="d-flex gap-2 mt-3 pt-3" style="border-top:1px solid var(--tm-gray-200)">
+        <button class="btn btn-tm-primary flex-grow-1" onclick="acaoAgendamentoModal(${a.id}, 'confirmar')">
+          <i class="bi bi-check-lg"></i> Confirmar
+        </button>
+        <button class="btn btn-outline-danger flex-grow-1" onclick="acaoAgendamentoModal(${a.id}, 'recusar')">
+          <i class="bi bi-x-lg"></i> Recusar
+        </button>
+      </div>` : ''}
+      ${a.status === 'confirmado' ? `
+      <div class="d-flex gap-2 mt-3 pt-3" style="border-top:1px solid var(--tm-gray-200)">
+        <button class="btn btn-success flex-grow-1" onclick="acaoAgendamentoModal(${a.id}, 'concluir')">
+          <i class="bi bi-check-circle"></i> Marcar como concluído
+        </button>
+        <button class="btn btn-outline-danger" onclick="acaoAgendamentoModal(${a.id}, 'cancelar')">
+          <i class="bi bi-x-lg"></i> Cancelar
+        </button>
+      </div>` : ''}
+    `;
+  } catch (err) {
+    body.innerHTML = '<div class="alert alert-danger">Erro ao carregar detalhes.</div>';
+  }
+}
+
+async function acaoAgendamentoModal(id, acao) {
+  let motivo = '';
+  if (acao === 'recusar' || acao === 'cancelar') {
+    motivo = prompt('Motivo (opcional):') || '';
+  }
+  try {
+    await api(`/oficina/solicitacoes/${id}/acao`, { method: 'POST', body: { acao, motivo } });
+    showToast('Status atualizado!', 'success');
+    // Fechar modal e recarregar agenda
+    bootstrap.Modal.getInstance(document.getElementById('modal-detalhe-agenda'))?.hide();
+    await renderOficinaAgenda(document.getElementById('app-content'), getHashParams().params);
+  } catch (err) {
+    showToast(err.error || 'Erro', 'error');
+  }
 }
 
 async function renderOficinaAgenda(el, params) {
@@ -59,7 +287,9 @@ async function renderOficinaAgenda(el, params) {
       const a = grid[d] && grid[d][hStr];
       tbody += '<td>';
       if (a) {
-        tbody += `<div class="agenda-slot agenda-${a.status}" title="${escapeHtml(a.cliente_nome)} - ${escapeHtml(a.servico)}">
+        tbody += `<div class="agenda-slot agenda-${a.status}" style="cursor:pointer" 
+          onclick="verDetalheAgendamento(${a.id})"
+          title="${escapeHtml(a.cliente_nome)} - ${escapeHtml(a.servico)}">
           <strong>${escapeHtml(a.servico)}</strong><br><small>${escapeHtml(a.cliente_nome)} (${escapeHtml(a.placa)})</small></div>`;
       }
       tbody += '</td>';
@@ -96,6 +326,21 @@ async function renderOficinaAgenda(el, params) {
       <div class="mt-3 small">
         <span class="badge agenda-confirmado">Confirmado</span>
         <span class="badge agenda-solicitado">Solicitado</span>
+      </div>
+    </div>
+
+    <!-- Modal detalhes agendamento -->
+    <div class="modal fade" id="modal-detalhe-agenda" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title fw-bold"><i class="bi bi-calendar-event"></i> Detalhes do Agendamento</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body" id="modal-detalhe-agenda-body">
+            <div class="loading">Carregando...</div>
+          </div>
+        </div>
       </div>
     </div>`;
 }
@@ -354,17 +599,204 @@ async function renderOficinaPerfil(el) {
 async function renderOficinaMetricas(el) {
   el.innerHTML = '<div class="loading">Carregando...</div>';
   const data = await api('/oficina/metricas');
+  const historico = await api('/oficina/historico');
+
+  // Dashboard cards
+  const hojeCount = data.agendamentos_hoje.length;
+  const hojeHtml = data.agendamentos_hoje.length > 0
+    ? data.agendamentos_hoje.map(a => {
+      const hora = new Date(a.data_hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      return `<div class="d-flex justify-content-between align-items-center py-2 border-bottom" style="border-color:var(--tm-gray-100)!important">
+        <div>
+          <strong class="small">${hora}</strong>
+          <span class="ms-2 small">${escapeHtml(a.servico)}</span>
+        </div>
+        <div class="text-end">
+          <span class="small text-muted">${escapeHtml(a.cliente_nome)}</span>
+          ${badgeStatus(a.status)}
+        </div>
+      </div>`;
+    }).join('')
+    : '<div class="text-center text-muted py-3 small"><i class="bi bi-calendar-check"></i> Nenhum agendamento para hoje</div>';
+
+  // Histórico
+  const historicoHtml = historico.historico.length > 0
+    ? historico.historico.slice(0, 10).map(h => {
+      const dataFmt = new Date(h.data_hora).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
+      return `
+      <tr>
+        <td class="small">${dataFmt}</td>
+        <td class="small">${escapeHtml(h.cliente_nome)}</td>
+        <td class="small">${escapeHtml(h.servico)}</td>
+        <td class="small">${escapeHtml(h.placa)}</td>
+        <td class="small fw-bold">${fmtMoney(h.valor_estimado)}</td>
+        <td>${h.qtd_estrelas ? `<span class="estrelas small">${'★'.repeat(h.qtd_estrelas)}</span>` : '<span class="text-muted small">—</span>'}</td>
+      </tr>`;
+    }).join('')
+    : '<tr><td colspan="6" class="text-center text-muted py-3">Nenhum atendimento concluído</td></tr>';
 
   el.innerHTML = `
-    <h3 class="mb-4"><i class="bi bi-graph-up text-tm-primary"></i> Painel de Métricas</h3>
+    <h3 class="mb-4"><i class="bi bi-graph-up text-tm-primary"></i> Painel da Oficina</h3>
+
+    <!-- Dashboard rápido -->
     <div class="row g-3 mb-4">
-      <div class="col-md-3"><div class="card p-3 text-center"><div class="text-muted small">Solicitados</div><h2 class="text-warning">${data.por_status.solicitado || 0}</h2></div></div>
-      <div class="col-md-3"><div class="card p-3 text-center"><div class="text-muted small">Confirmados</div><h2 class="text-tm-primary">${data.por_status.confirmado || 0}</h2></div></div>
-      <div class="col-md-3"><div class="card p-3 text-center"><div class="text-muted small">Concluídos</div><h2 class="text-success">${data.por_status.concluido || 0}</h2></div></div>
-      <div class="col-md-3"><div class="card p-3 text-center"><div class="text-muted small">Atendimentos no mês</div><h2>${data.mes_total}</h2></div></div>
+      <div class="col-6 col-md-3">
+        <div class="card p-3 text-center">
+          <div class="text-muted small">Hoje</div>
+          <h2 class="mb-0">${hojeCount}</h2>
+          <div class="small text-muted">agendamento(s)</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card p-3 text-center">
+          <div class="text-muted small">Pendentes</div>
+          <h2 class="mb-0 text-warning">${data.pendentes}</h2>
+          <div class="small text-muted">solicitações</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card p-3 text-center">
+          <div class="text-muted small">Receita do mês</div>
+          <h2 class="mb-0 text-success" style="font-size:1.3rem">${fmtMoney(data.receita_mes)}</h2>
+          <div class="small text-muted">${data.mes_total} atendimento(s)</div>
+        </div>
+      </div>
+      <div class="col-6 col-md-3">
+        <div class="card p-3 text-center">
+          <div class="text-muted small">Avaliação</div>
+          <h2 class="mb-0 estrelas">${parseFloat(data.nota_media).toFixed(1)} ★</h2>
+          <div class="small text-muted">${data.total_avaliacoes} avaliações</div>
+        </div>
+      </div>
     </div>
-    <div class="row g-3">
-      <div class="col-md-6"><div class="card p-4"><h5>Nota média</h5><h1 class="estrelas">${parseFloat(data.nota_media).toFixed(1)} ★</h1><p class="text-muted">${data.total_avaliacoes} avaliações</p></div></div>
-      <div class="col-md-6"><div class="card p-4"><h5>Receita estimada (concluídos)</h5><h1 class="text-success">${fmtMoney(data.receita)}</h1><p class="text-muted small">Soma dos valores estimados</p></div></div>
+
+    <!-- Agenda de hoje -->
+    <div class="row g-3 mb-4">
+      <div class="col-lg-6">
+        <div class="card p-4">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold mb-0"><i class="bi bi-calendar-day text-tm-primary"></i> Agenda de Hoje</h6>
+            <a href="#oficina-agenda" class="small">Ver semana →</a>
+          </div>
+          ${hojeHtml}
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="card p-4">
+          <h6 class="fw-bold mb-3"><i class="bi bi-bar-chart text-tm-primary"></i> Resumo Geral</h6>
+          <div class="row g-2">
+            <div class="col-6">
+              <div class="rounded-3 p-2 text-center" style="background:var(--tm-gray-50)">
+                <div class="small text-muted">Solicitados</div>
+                <div class="fw-bold text-warning">${data.por_status.solicitado || 0}</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="rounded-3 p-2 text-center" style="background:var(--tm-gray-50)">
+                <div class="small text-muted">Confirmados</div>
+                <div class="fw-bold text-primary">${data.por_status.confirmado || 0}</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="rounded-3 p-2 text-center" style="background:var(--tm-gray-50)">
+                <div class="small text-muted">Concluídos</div>
+                <div class="fw-bold text-success">${data.por_status.concluido || 0}</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="rounded-3 p-2 text-center" style="background:var(--tm-gray-50)">
+                <div class="small text-muted">Receita total</div>
+                <div class="fw-bold text-success">${fmtMoney(data.receita)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Histórico de atendimentos -->
+    <div class="card p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-bold mb-0"><i class="bi bi-clock-history text-tm-primary"></i> Histórico de Atendimentos</h6>
+        <span class="small text-muted">${historico.historico.length} concluído(s)</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm">
+          <thead><tr>
+            <th>Data</th><th>Cliente</th><th>Serviço</th><th>Placa</th><th>Valor</th><th>Avaliação</th>
+          </tr></thead>
+          <tbody>${historicoHtml}</tbody>
+        </table>
+      </div>
     </div>`;
+}
+
+// ─── NOTIFICAÇÕES DA OFICINA ────────────────────────
+async function renderOficinaNotificacoes(el) {
+  el.innerHTML = '<div class="loading">Carregando notificações...</div>';
+
+  try {
+    const data = await api('/oficina/notificacoes');
+
+    // Marcar como lidas
+    if (data.nao_lidas > 0) {
+      api('/oficina/notificacoes/ler', { method: 'POST', body: {} }).then(() => checkNotifBadgeOficina());
+    }
+
+    if (!data.notificacoes.length) {
+      el.innerHTML = `
+        <h5 class="fw-bold mb-4"><i class="bi bi-bell text-tm-primary"></i> Notificações</h5>
+        <div class="empty-state">
+          <i class="bi bi-bell-slash"></i>
+          <p>Nenhuma notificação</p>
+          <small class="text-muted">Você será notificado quando clientes agendarem ou cancelarem.</small>
+        </div>`;
+      return;
+    }
+
+    const iconesTipo = {
+      novo_agendamento: { icon: 'bi-calendar-plus-fill', color: 'var(--tm-primary)' },
+      cancelado: { icon: 'bi-x-circle-fill', color: 'var(--tm-danger)' },
+      avaliacao: { icon: 'bi-star-fill', color: '#F59E0B' }
+    };
+
+    const notifHtml = data.notificacoes.map(n => {
+      const icone = iconesTipo[n.tipo] || { icon: 'bi-info-circle-fill', color: 'var(--tm-primary)' };
+      const tempo = timeAgoOficina(n.criado_em);
+      return `
+      <div class="card p-3 mb-2 ${n.lida ? 'opacity-75' : ''}" style="${!n.lida ? 'border-left:3px solid ' + icone.color : ''}">
+        <div class="d-flex gap-3 align-items-start">
+          <i class="bi ${icone.icon}" style="font-size:1.3rem;color:${icone.color};margin-top:2px"></i>
+          <div class="flex-grow-1">
+            <div class="d-flex justify-content-between align-items-center">
+              <strong class="small">${escapeHtml(n.titulo)}</strong>
+              <small class="text-muted">${tempo}</small>
+            </div>
+            <p class="mb-0 small text-muted">${escapeHtml(n.mensagem)}</p>
+            ${n.link ? `<a href="${n.link}" class="small">Ver →</a>` : ''}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+
+    el.innerHTML = `
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 class="fw-bold mb-0"><i class="bi bi-bell text-tm-primary"></i> Notificações</h5>
+        <span class="text-muted small">${data.notificacoes.length} notificação(ões)</span>
+      </div>
+      ${notifHtml}`;
+  } catch (err) {
+    el.innerHTML = `<div class="alert alert-danger">Erro: ${escapeHtml(err.message || err.error || 'Erro')}</div>`;
+  }
+}
+
+function timeAgoOficina(dateStr) {
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diff = Math.floor((now - date) / 1000);
+  if (diff < 60) return 'Agora';
+  if (diff < 3600) return Math.floor(diff / 60) + ' min';
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h';
+  if (diff < 604800) return Math.floor(diff / 86400) + 'd';
+  return date.toLocaleDateString('pt-BR');
 }
