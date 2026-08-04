@@ -19,6 +19,7 @@ function renderLogin(el) {
               </div>
             </div>
             <button class="btn btn-tm-primary w-100 mb-3">Entrar</button>
+            <div class="text-center mb-3"><a href="#esqueci-senha" class="small">Esqueci minha senha</a></div>
             <hr>
             <div class="text-center">Não tem conta? <a href="#cadastro">Cadastre-se</a></div>
           </form>
@@ -212,4 +213,425 @@ function togglePass(id, btn) {
   const ico = btn.querySelector('i');
   if (inp.type === 'password') { inp.type = 'text'; ico.className = 'bi bi-eye-slash'; }
   else { inp.type = 'password'; ico.className = 'bi bi-eye'; }
+}
+
+// ─── PERFIL ─────────────────────────────────────────
+async function renderPerfil(el) {
+  el.innerHTML = '<div class="loading">Carregando perfil...</div>';
+
+  try {
+    const data = await api('/auth/perfil');
+    const user = data.user;
+    const extra = data.extra;
+    const isOficina = user.tipo === 'oficina';
+    const isCliente = user.tipo === 'cliente';
+
+    const membroDesde = new Date(user.criado_em).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
+    // Campos extras para oficina
+    const camposOficina = isOficina ? `
+      <hr class="my-4">
+      <h6 class="fw-bold mb-3"><i class="bi bi-building text-tm-primary"></i> Dados da Oficina</h6>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label">Nome Fantasia *</label>
+          <input id="perfil-nome-fantasia" class="form-control" value="${escapeHtml(extra.nome_fantasia || '')}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">CNPJ</label>
+          <input class="form-control" value="${escapeHtml(extra.cnpj || '')}" disabled>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Logradouro</label>
+          <input id="perfil-logradouro" class="form-control" value="${escapeHtml(extra.logradouro || '')}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Número</label>
+          <input id="perfil-numero" class="form-control" value="${escapeHtml(extra.numero || '')}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Bairro</label>
+          <input id="perfil-bairro" class="form-control" value="${escapeHtml(extra.bairro || '')}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Cidade</label>
+          <input id="perfil-cidade" class="form-control" value="${escapeHtml(extra.cidade || '')}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">UF</label>
+          <input id="perfil-uf" class="form-control" value="${escapeHtml(extra.uf || 'DF')}" maxlength="2">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">CEP</label>
+          <input id="perfil-cep" class="form-control" value="${escapeHtml(extra.cep || '')}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Latitude</label>
+          <input id="perfil-lat" type="number" step="any" class="form-control" value="${extra.latitude || ''}" placeholder="-15.80">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Longitude</label>
+          <input id="perfil-lng" type="number" step="any" class="form-control" value="${extra.longitude || ''}" placeholder="-47.90">
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+          <button type="button" class="btn btn-outline-primary btn-sm w-100" id="btn-geolocalizar">
+            <i class="bi bi-geo-alt"></i> Usar minha localização
+          </button>
+        </div>
+      </div>` : '';
+
+    // CPF (somente exibição para cliente)
+    const campoCpf = isCliente ? `
+      <div class="col-md-6">
+        <label class="form-label">CPF</label>
+        <input class="form-control" value="${escapeHtml(extra.cpf || '')}" disabled>
+      </div>` : '';
+
+    el.innerHTML = `
+      <div class="row justify-content-center">
+        <div class="col-lg-8">
+          <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="position-relative">
+              <div class="rounded-circle overflow-hidden d-flex align-items-center justify-content-center" id="perfil-avatar-container" style="width:80px;height:80px;background:var(--tm-primary-50);cursor:pointer" title="Clique para alterar foto">
+                ${user.foto_url
+                  ? `<img src="${user.foto_url}" style="width:100%;height:100%;object-fit:cover" id="perfil-avatar-img">`
+                  : `<i class="bi bi-person-fill" style="font-size:2.5rem;color:var(--tm-primary)" id="perfil-avatar-icon"></i>`}
+              </div>
+              <label for="perfil-foto-input" class="position-absolute bottom-0 end-0 bg-tm-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width:28px;height:28px;cursor:pointer;border:2px solid #fff">
+                <i class="bi bi-camera-fill" style="font-size:.75rem"></i>
+              </label>
+              <input type="file" id="perfil-foto-input" accept="image/jpeg,image/png,image/webp" class="d-none">
+            </div>
+            <div>
+              <h4 class="fw-bold mb-0">Meu Perfil</h4>
+              <span class="text-muted small">Membro desde ${membroDesde} · ${fmtStatus(user.status)}</span>
+              ${user.foto_url ? `<br><button class="btn btn-sm btn-outline-danger mt-1" id="btn-remover-foto"><i class="bi bi-trash3"></i> Remover foto</button>` : ''}
+            </div>
+          </div>
+
+          <div class="card p-4">
+            <form id="form-perfil">
+              <h6 class="fw-bold mb-3"><i class="bi bi-person text-tm-primary"></i> Informações Pessoais</h6>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label">Nome *</label>
+                  <input id="perfil-nome" class="form-control" value="${escapeHtml(user.nome)}" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">E-mail</label>
+                  <input class="form-control" value="${escapeHtml(user.email)}" disabled>
+                  <div class="form-text">E-mail não pode ser alterado.</div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Telefone</label>
+                  <input id="perfil-telefone" class="form-control" value="${escapeHtml(user.telefone || '')}" placeholder="(61) 99999-0000">
+                </div>
+                ${campoCpf}
+              </div>
+
+              ${camposOficina}
+
+              <hr class="my-4">
+              <h6 class="fw-bold mb-3"><i class="bi bi-shield-lock text-tm-primary"></i> Alterar Senha <span class="text-muted fw-normal small">(opcional)</span></h6>
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label">Senha atual</label>
+                  <div class="input-group">
+                    <input type="password" id="perfil-senha-atual" class="form-control">
+                    <button type="button" class="btn btn-outline-secondary" onclick="togglePass('perfil-senha-atual',this)"><i class="bi bi-eye"></i></button>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Nova senha</label>
+                  <div class="input-group">
+                    <input type="password" id="perfil-senha-nova" class="form-control">
+                    <button type="button" class="btn btn-outline-secondary" onclick="togglePass('perfil-senha-nova',this)"><i class="bi bi-eye"></i></button>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Confirmar nova senha</label>
+                  <div class="input-group">
+                    <input type="password" id="perfil-senha-nova2" class="form-control">
+                    <button type="button" class="btn btn-outline-secondary" onclick="togglePass('perfil-senha-nova2',this)"><i class="bi bi-eye"></i></button>
+                  </div>
+                </div>
+              </div>
+              <div class="form-text"><i class="bi bi-info-circle"></i> Preencha os campos de senha apenas se quiser alterá-la.</div>
+
+              <div id="perfil-erros" class="mt-3"></div>
+
+              <div class="d-flex justify-content-end mt-4 gap-2">
+                <button type="button" class="btn btn-outline-secondary" onclick="history.back()">Cancelar</button>
+                <button type="submit" class="btn btn-tm-primary" id="btn-salvar-perfil">
+                  <i class="bi bi-check-lg"></i> Salvar Alterações
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>`;
+
+    // Upload de foto
+    document.getElementById('perfil-foto-input')?.addEventListener('change', async function() {
+      const file = this.files[0];
+      if (!file) return;
+      if (file.size > 5 * 1024 * 1024) { showToast('Imagem muito grande (máx 5MB)', 'warning'); return; }
+
+      const formData = new FormData();
+      formData.append('foto', file);
+
+      try {
+        const token = getToken();
+        const res = await fetch('/api/auth/foto', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw data;
+
+        showToast('Foto atualizada!', 'success');
+        // Atualizar avatar na página
+        const container = document.getElementById('perfil-avatar-container');
+        container.innerHTML = `<img src="${data.foto_url}" style="width:100%;height:100%;object-fit:cover">`;
+        renderNavbar();
+      } catch (err) {
+        showToast(err.error || 'Erro ao enviar foto', 'error');
+      }
+    });
+
+    document.getElementById('perfil-avatar-container')?.addEventListener('click', () => {
+      document.getElementById('perfil-foto-input')?.click();
+    });
+
+    document.getElementById('btn-remover-foto')?.addEventListener('click', async () => {
+      if (!confirm('Remover foto de perfil?')) return;
+      try {
+        await api('/auth/foto', { method: 'DELETE' });
+        showToast('Foto removida', 'info');
+        await renderPerfil(el);
+      } catch (err) { showToast(err.error || 'Erro', 'error'); }
+    });
+
+    // Geolocalização para oficina
+    document.getElementById('btn-geolocalizar')?.addEventListener('click', () => {
+      if (!navigator.geolocation) { showToast('Geolocalização não suportada.', 'warning'); return; }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          document.getElementById('perfil-lat').value = pos.coords.latitude.toFixed(6);
+          document.getElementById('perfil-lng').value = pos.coords.longitude.toFixed(6);
+          showToast('Localização capturada!', 'success');
+        },
+        () => showToast('Não foi possível obter localização.', 'error'),
+        { timeout: 10000 }
+      );
+    });
+
+    // Submit
+    document.getElementById('form-perfil').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errosDiv = document.getElementById('perfil-erros');
+      errosDiv.innerHTML = '';
+
+      const body = {
+        nome: document.getElementById('perfil-nome').value.trim(),
+        telefone: document.getElementById('perfil-telefone').value.trim(),
+        senha_atual: document.getElementById('perfil-senha-atual').value,
+        senha_nova: document.getElementById('perfil-senha-nova').value,
+        senha_nova2: document.getElementById('perfil-senha-nova2').value
+      };
+
+      // Validação local de senha
+      if (body.senha_nova && body.senha_nova !== body.senha_nova2) {
+        errosDiv.innerHTML = '<div class="alert alert-danger py-2">Novas senhas não conferem.</div>';
+        return;
+      }
+
+      // Dados da oficina
+      if (isOficina) {
+        body.nome_fantasia = document.getElementById('perfil-nome-fantasia').value.trim();
+        body.logradouro = document.getElementById('perfil-logradouro').value.trim();
+        body.numero = document.getElementById('perfil-numero').value.trim();
+        body.bairro = document.getElementById('perfil-bairro').value.trim();
+        body.cidade = document.getElementById('perfil-cidade').value.trim();
+        body.uf = document.getElementById('perfil-uf').value.trim();
+        body.cep = document.getElementById('perfil-cep').value.trim();
+        body.latitude = parseFloat(document.getElementById('perfil-lat').value) || null;
+        body.longitude = parseFloat(document.getElementById('perfil-lng').value) || null;
+      }
+
+      const btn = document.getElementById('btn-salvar-perfil');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvando...';
+
+      try {
+        const resp = await api('/auth/perfil', { method: 'PUT', body });
+        // Atualiza token e user no localStorage
+        if (resp.token && resp.user) {
+          setAuth(resp.token, resp.user);
+          renderNavbar();
+        }
+        showToast(resp.message || 'Perfil atualizado!', 'success');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Salvar Alterações';
+        // Limpar campos de senha
+        document.getElementById('perfil-senha-atual').value = '';
+        document.getElementById('perfil-senha-nova').value = '';
+        document.getElementById('perfil-senha-nova2').value = '';
+      } catch (err) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-lg"></i> Salvar Alterações';
+        errosDiv.innerHTML = `<div class="alert alert-danger py-2">${escapeHtml(err.error || 'Erro ao salvar')}</div>`;
+      }
+    });
+
+  } catch (err) {
+    el.innerHTML = `<div class="alert alert-danger">Erro ao carregar perfil: ${escapeHtml(err.message || err.error || 'Erro')}</div>`;
+  }
+}
+
+
+// ─── ESQUECI SENHA ──────────────────────────────────
+function renderEsqueciSenha(el) {
+  el.innerHTML = `
+    <div class="row justify-content-center">
+      <div class="col-md-5">
+        <div class="card p-4">
+          <div class="text-center mb-4">
+            <div class="rounded-circle d-inline-flex align-items-center justify-content-center" style="width:64px;height:64px;background:var(--tm-primary-50)">
+              <i class="bi bi-envelope-at" style="font-size:1.5rem;color:var(--tm-primary)"></i>
+            </div>
+            <h4 class="fw-bold mt-3">Esqueceu sua senha?</h4>
+            <p class="text-muted small">Informe seu e-mail e enviaremos um link para redefinir sua senha.</p>
+          </div>
+          <div id="esqueci-msg"></div>
+          <form id="form-esqueci">
+            <div class="mb-3">
+              <label class="form-label">E-mail cadastrado</label>
+              <input type="email" id="esqueci-email" class="form-control" required autofocus placeholder="seu.email@exemplo.com">
+            </div>
+            <button type="submit" class="btn btn-tm-primary w-100" id="btn-esqueci">
+              <i class="bi bi-send"></i> Enviar link de recuperação
+            </button>
+          </form>
+          <div class="text-center mt-3">
+            <a href="#login" class="small"><i class="bi bi-arrow-left"></i> Voltar ao login</a>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('form-esqueci').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('esqueci-email').value.trim();
+    const btn = document.getElementById('btn-esqueci');
+    const msgDiv = document.getElementById('esqueci-msg');
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Enviando...';
+
+    try {
+      const data = await api('/auth/esqueci-senha', { method: 'POST', body: { email } });
+      msgDiv.innerHTML = `
+        <div class="alert alert-success">
+          <i class="bi bi-check-circle"></i> ${escapeHtml(data.message)}
+        </div>`;
+      btn.innerHTML = '<i class="bi bi-check"></i> Enviado';
+    } catch (err) {
+      msgDiv.innerHTML = `<div class="alert alert-danger">${escapeHtml(err.error || 'Erro ao enviar')}</div>`;
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-send"></i> Enviar link de recuperação';
+    }
+  });
+}
+
+// ─── REDEFINIR SENHA ────────────────────────────────
+async function renderRedefinirSenha(el, params) {
+  const token = params.get('token');
+
+  if (!token) {
+    el.innerHTML = '<div class="alert alert-danger">Link inválido. Solicite um novo link de recuperação.</div>';
+    return;
+  }
+
+  // Verificar se token é válido
+  try {
+    const check = await api(`/auth/verificar-token-reset/${token}`);
+    if (!check.valido) {
+      el.innerHTML = `
+        <div class="row justify-content-center"><div class="col-md-5"><div class="card p-4 text-center">
+          <i class="bi bi-x-circle" style="font-size:3rem;color:var(--tm-danger)"></i>
+          <h5 class="fw-bold mt-3">Link expirado</h5>
+          <p class="text-muted">Este link de recuperação é inválido ou expirou.</p>
+          <a href="#esqueci-senha" class="btn btn-tm-primary">Solicitar novo link</a>
+        </div></div></div>`;
+      return;
+    }
+  } catch(e) {}
+
+  el.innerHTML = `
+    <div class="row justify-content-center">
+      <div class="col-md-5">
+        <div class="card p-4">
+          <div class="text-center mb-4">
+            <div class="rounded-circle d-inline-flex align-items-center justify-content-center" style="width:64px;height:64px;background:var(--tm-success-50)">
+              <i class="bi bi-shield-lock" style="font-size:1.5rem;color:var(--tm-success)"></i>
+            </div>
+            <h4 class="fw-bold mt-3">Nova senha</h4>
+            <p class="text-muted small">Crie uma nova senha para sua conta.</p>
+          </div>
+          <div id="redefinir-msg"></div>
+          <form id="form-redefinir">
+            <div class="mb-3">
+              <label class="form-label">Nova senha</label>
+              <div class="input-group">
+                <input type="password" id="redefinir-senha" class="form-control" required>
+                <button type="button" class="btn btn-outline-secondary" onclick="togglePass('redefinir-senha',this)"><i class="bi bi-eye"></i></button>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Confirmar nova senha</label>
+              <div class="input-group">
+                <input type="password" id="redefinir-senha2" class="form-control" required>
+                <button type="button" class="btn btn-outline-secondary" onclick="togglePass('redefinir-senha2',this)"><i class="bi bi-eye"></i></button>
+              </div>
+            </div>
+            <div class="form-text mb-3"><i class="bi bi-info-circle"></i> Mín. 8 caracteres, 1 maiúscula, 1 número, 1 especial.</div>
+            <button type="submit" class="btn btn-tm-primary w-100" id="btn-redefinir">
+              <i class="bi bi-check-lg"></i> Redefinir senha
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('form-redefinir').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const senha = document.getElementById('redefinir-senha').value;
+    const senha2 = document.getElementById('redefinir-senha2').value;
+    const btn = document.getElementById('btn-redefinir');
+    const msgDiv = document.getElementById('redefinir-msg');
+
+    if (senha !== senha2) {
+      msgDiv.innerHTML = '<div class="alert alert-danger">Senhas não conferem.</div>';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvando...';
+
+    try {
+      const data = await api('/auth/redefinir-senha', { method: 'POST', body: { token, senha, senha2 } });
+      msgDiv.innerHTML = `
+        <div class="alert alert-success">
+          <i class="bi bi-check-circle"></i> ${escapeHtml(data.message)}
+        </div>`;
+      btn.innerHTML = '<i class="bi bi-check"></i> Senha redefinida';
+      setTimeout(() => navegarPara('login'), 2000);
+    } catch (err) {
+      msgDiv.innerHTML = `<div class="alert alert-danger">${escapeHtml(err.error || 'Erro')}</div>`;
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-check-lg"></i> Redefinir senha';
+    }
+  });
 }

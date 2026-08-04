@@ -100,6 +100,19 @@ router.get('/oficina/:id', (req: AuthRequest, res: Response) => {
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
+// GET /api/cliente/oficina/:id/avaliacoes - todas as avaliações
+router.get('/oficina/:id/avaliacoes', (req: AuthRequest, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    const avaliacoes = db.prepare(
+      `SELECT a.*, u.nome AS cliente_nome FROM avaliacoes a
+       JOIN usuarios u ON u.id=a.cliente_id
+       WHERE a.oficina_id=? AND a.ocultada=0 ORDER BY a.criado_em DESC`
+    ).all(id);
+    res.json({ avaliacoes });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
 // GET /api/cliente/horarios
 router.get('/horarios', (req: AuthRequest, res: Response) => {
   try {
@@ -135,6 +148,11 @@ router.post('/agendar', (req: AuthRequest, res: Response) => {
        VALUES (?, ?, ?, ?, ?, ?, 'solicitado', ?)`
     ).run(cliente_id, oficina_id, veiculo_id, servico_ids[0], datahora, dur, preco);
 
+    // Notificação para a oficina
+    const clienteNome = (db.prepare('SELECT nome FROM usuarios WHERE id=?').get(cliente_id) as any)?.nome || 'Cliente';
+    db.prepare('INSERT INTO notificacoes (usuario_id, tipo, titulo, mensagem, link) VALUES (?, ?, ?, ?, ?)')
+      .run(oficina_id, 'novo_agendamento', '📅 Nova solicitação de agendamento', `${clienteNome} solicitou um agendamento para ${data} às ${hora}.`, '#oficina-solicitacoes');
+
     res.status(201).json({ id: result.lastInsertRowid, message: 'Agendamento solicitado!' });
   } catch (err: any) {
     if (err.code === 'SQLITE_CONSTRAINT_UNIQUE') {
@@ -168,6 +186,15 @@ router.post('/cancelar/:id', (req: AuthRequest, res: Response) => {
        WHERE id=? AND cliente_id=? AND status IN('solicitado','confirmado')`
     ).run(motivo, id, req.user!.id);
     if (result.changes === 0) { res.status(400).json({ error: 'Não pode ser cancelado' }); return; }
+
+    // Notificação para a oficina
+    const ag = db.prepare('SELECT oficina_id FROM agendamentos WHERE id=?').get(id) as any;
+    const clienteNome = (db.prepare('SELECT nome FROM usuarios WHERE id=?').get(req.user!.id) as any)?.nome || 'Cliente';
+    if (ag) {
+      db.prepare('INSERT INTO notificacoes (usuario_id, tipo, titulo, mensagem, link) VALUES (?, ?, ?, ?, ?)')
+        .run(ag.oficina_id, 'cancelado', '❌ Agendamento cancelado pelo cliente', `${clienteNome} cancelou um agendamento.`, '#oficina-solicitacoes?status=cancelado');
+    }
+
     res.json({ message: 'Agendamento cancelado.' });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
@@ -274,5 +301,131 @@ function gerarHorariosDisponiveis(oficina_id: number, data: string, duracao: num
   }
   return slots;
 }
+
+// ─── FAVORITOS ──────────────────────────────────────
+
+// GET /api/cliente/favoritos
+router.get('/favoritos', (req: AuthRequest, res: Response) => {
+  try {
+    const favoritos = db.prepare(
+      `SELECT f.*, o.nome_fantasia, o.bairro, o.cidade, o.uf, o.nota_media, o.total_avaliacoes, o.latitude, o.longitude, u.telefone
+       FROM favoritos f
+       JOIN oficinas o ON o.usuario_id=f.oficina_id
+       JOIN usuarios u ON u.id=f.oficina_id
+       WHERE f.cliente_id=?
+       ORDER BY f.criado_em DESC`
+    ).all(req.user!.id);
+    res.json({ favoritos });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/cliente/favoritos/:oficina_id
+router.post('/favoritos/:oficina_id', (req: AuthRequest, res: Response) => {
+  try {
+    const oficinaId = parseInt(req.params.oficina_id);
+    db.prepare('INSERT OR IGNORE INTO favoritos (cliente_id, oficina_id) VALUES (?, ?)').run(req.user!.id, oficinaId);
+    res.json({ message: 'Oficina favoritada!' });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/cliente/favoritos/:oficina_id
+router.delete('/favoritos/:oficina_id', (req: AuthRequest, res: Response) => {
+  try {
+    const oficinaId = parseInt(req.params.oficina_id);
+    db.prepare('DELETE FROM favoritos WHERE cliente_id=? AND oficina_id=?').run(req.user!.id, oficinaId);
+    res.json({ message: 'Removido dos favoritos.' });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// GET /api/cliente/favorito/:oficina_id — check if favorited
+router.get('/favorito/:oficina_id', (req: AuthRequest, res: Response) => {
+  try {
+    const oficinaId = parseInt(req.params.oficina_id);
+    const fav = db.prepare('SELECT id FROM favoritos WHERE cliente_id=? AND oficina_id=?').get(req.user!.id, oficinaId);
+    res.json({ favoritado: !!fav });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── HISTÓRICO DE SERVIÇOS ──────────────────────────
+
+// GET /api/cliente/historico
+router.get('/historico', (req: AuthRequest, res: Response) => {
+  try {
+    const veiculoId = req.query.veiculo_id ? parseInt(req.query.veiculo_id as string) : null;
+    let sql = `SELECT a.*, o.nome_fantasia, cs.nome AS servico, cs.categoria, v.placa, v.marca, v.modelo, v.ano,
+       av.qtd_estrelas
+       FROM agendamentos a
+       JOIN oficinas o ON o.usuario_id=a.oficina_id
+       JOIN catalogo_servicos cs ON cs.id=a.servico_id
+       JOIN veiculos v ON v.id=a.veiculo_id
+       LEFT JOIN avaliacoes av ON av.agendamento_id=a.id
+       WHERE a.cliente_id=? AND a.status='concluido'`;
+    const params: any[] = [req.user!.id];
+
+    if (veiculoId) {
+      sql += ' AND a.veiculo_id=?';
+      params.push(veiculoId);
+    }
+    sql += ' ORDER BY a.data_hora DESC';
+
+    const historico = db.prepare(sql).all(...params);
+    res.json({ historico });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── NOTIFICAÇÕES ───────────────────────────────────
+
+// GET /api/cliente/notificacoes
+router.get('/notificacoes', (req: AuthRequest, res: Response) => {
+  try {
+    const notificacoes = db.prepare(
+      'SELECT * FROM notificacoes WHERE usuario_id=? ORDER BY criado_em DESC LIMIT 50'
+    ).all(req.user!.id);
+    const nao_lidas = db.prepare(
+      'SELECT COUNT(*) as total FROM notificacoes WHERE usuario_id=? AND lida=0'
+    ).get(req.user!.id) as any;
+    res.json({ notificacoes, nao_lidas: nao_lidas.total });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/cliente/notificacoes/ler — marca todas como lidas
+router.post('/notificacoes/ler', (req: AuthRequest, res: Response) => {
+  try {
+    db.prepare('UPDATE notificacoes SET lida=1 WHERE usuario_id=?').run(req.user!.id);
+    res.json({ message: 'Notificações marcadas como lidas.' });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/cliente/notificacoes/ler/:id — marca uma como lida
+router.post('/notificacoes/ler/:id', (req: AuthRequest, res: Response) => {
+  try {
+    db.prepare('UPDATE notificacoes SET lida=1 WHERE id=? AND usuario_id=?').run(parseInt(req.params.id), req.user!.id);
+    res.json({ message: 'OK' });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// ─── COMPROVANTE / RECIBO ───────────────────────────
+
+// GET /api/cliente/comprovante/:agendamento_id
+router.get('/comprovante/:id', (req: AuthRequest, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    const ag = db.prepare(
+      `SELECT a.*, o.nome_fantasia, o.cnpj, o.logradouro, o.numero, o.bairro, o.cidade, o.uf,
+       cs.nome AS servico, cs.categoria, v.placa, v.marca, v.modelo, v.ano,
+       u_cli.nome AS cliente_nome, u_cli.email AS cliente_email, u_ofi.telefone AS oficina_telefone
+       FROM agendamentos a
+       JOIN oficinas o ON o.usuario_id=a.oficina_id
+       JOIN catalogo_servicos cs ON cs.id=a.servico_id
+       JOIN veiculos v ON v.id=a.veiculo_id
+       JOIN usuarios u_cli ON u_cli.id=a.cliente_id
+       JOIN usuarios u_ofi ON u_ofi.id=a.oficina_id
+       WHERE a.id=? AND a.cliente_id=?`
+    ).get(id, req.user!.id) as any;
+
+    if (!ag) { res.status(404).json({ error: 'Agendamento não encontrado' }); return; }
+    res.json({ comprovante: ag });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
 
 export default router;
