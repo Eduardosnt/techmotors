@@ -1,11 +1,12 @@
-import Database from 'better-sqlite3';
+import fs from 'fs';
 import path from 'path';
+
 import bcrypt from 'bcryptjs';
+import Database from 'better-sqlite3';
 
 const DB_PATH = path.join(__dirname, '../../data/techmotors.db');
 
 // Criar diretório data se não existir
-import fs from 'fs';
 const dataDir = path.dirname(DB_PATH);
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
@@ -200,15 +201,29 @@ export function initDatabase() {
 function seedDatabase() {
   const hash = bcrypt.hashSync('Senha@123', 10);
 
-  const insertUser = db.prepare('INSERT INTO usuarios (nome, email, senha, telefone, tipo, status) VALUES (?, ?, ?, ?, ?, ?)');
+  const insertUser = db.prepare(
+    'INSERT INTO usuarios (nome, email, senha, telefone, tipo, status) VALUES (?, ?, ?, ?, ?, ?)'
+  );
   const insertCliente = db.prepare('INSERT INTO clientes (usuario_id, cpf) VALUES (?, ?)');
-  const insertOficina = db.prepare('INSERT INTO oficinas (usuario_id, cnpj, nome_fantasia, razao_social, logradouro, numero, bairro, cidade, uf, cep, latitude, longitude, nota_media, total_avaliacoes, status_aprovacao, aprovado_por, aprovado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)');
-  const insertVeiculo = db.prepare('INSERT INTO veiculos (cliente_id, placa, marca, modelo, ano, tipo) VALUES (?, ?, ?, ?, ?, ?)');
+  const insertOficina = db.prepare(
+    'INSERT INTO oficinas (usuario_id, cnpj, nome_fantasia, razao_social, logradouro, numero, bairro, cidade, uf, cep, latitude, longitude, nota_media, total_avaliacoes, status_aprovacao, aprovado_por, aprovado_em) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+  );
+  const insertVeiculo = db.prepare(
+    'INSERT INTO veiculos (cliente_id, placa, marca, modelo, ano, tipo) VALUES (?, ?, ?, ?, ?, ?)'
+  );
   const insertCatalogo = db.prepare('INSERT INTO catalogo_servicos (nome, categoria, descricao) VALUES (?, ?, ?)');
-  const insertOfServico = db.prepare('INSERT INTO oficina_servicos (oficina_id, servico_id, preco_modalidade, preco, duracao_minutos) VALUES (?, ?, ?, ?, ?)');
-  const insertDisp = db.prepare('INSERT INTO disponibilidade (oficina_id, dia_semana, hora_inicio, hora_fim) VALUES (?, ?, ?, ?)');
-  const insertAgend = db.prepare('INSERT INTO agendamentos (cliente_id, oficina_id, veiculo_id, servico_id, data_hora, duracao_minutos, status, valor_estimado) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-  const insertAval = db.prepare('INSERT INTO avaliacoes (agendamento_id, cliente_id, oficina_id, qtd_estrelas, comentario) VALUES (?, ?, ?, ?, ?)');
+  const insertOfServico = db.prepare(
+    'INSERT INTO oficina_servicos (oficina_id, servico_id, preco_modalidade, preco, duracao_minutos) VALUES (?, ?, ?, ?, ?)'
+  );
+  const insertDisp = db.prepare(
+    'INSERT INTO disponibilidade (oficina_id, dia_semana, hora_inicio, hora_fim) VALUES (?, ?, ?, ?)'
+  );
+  const insertAgend = db.prepare(
+    'INSERT INTO agendamentos (cliente_id, oficina_id, veiculo_id, servico_id, data_hora, duracao_minutos, status, valor_estimado) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+  );
+  const insertAval = db.prepare(
+    'INSERT INTO avaliacoes (agendamento_id, cliente_id, oficina_id, qtd_estrelas, comentario) VALUES (?, ?, ?, ?, ?)'
+  );
 
   const transaction = db.transaction(() => {
     // Admin
@@ -243,31 +258,128 @@ function seedDatabase() {
     insertUser.run('JM Auto Centro', 'jm@oficina.com', hash, '(61) 3333-1000', 'oficina', 'ativo');
     insertUser.run('High Torque Asa Sul', 'high@oficina.com', hash, '(61) 3333-2000', 'oficina', 'ativo');
     insertUser.run('Mecânica do Zé', 'ze@oficina.com', hash, '(61) 3333-3000', 'oficina', 'ativo');
-    insertUser.run('Auto Center Brasília', 'autocenter@oficina.com', hash, '(61) 3333-4000', 'oficina', 'pendente_aprovacao');
+    insertUser.run(
+      'Auto Center Brasília',
+      'autocenter@oficina.com',
+      hash,
+      '(61) 3333-4000',
+      'oficina',
+      'pendente_aprovacao'
+    );
     insertUser.run('Oficina Taguá', 'tagua@oficina.com', hash, '(61) 3333-5000', 'oficina', 'pendente_aprovacao');
 
     const now = new Date().toISOString().replace('T', ' ').substring(0, 19);
-    insertOficina.run(5, '11.111.111/0001-11', 'JM Auto Centro', 'JM Auto Centro LTDA', 'SIA Trecho 3', '45', 'SIA', 'Brasília', 'DF', '71200-030', -15.806, -47.945, 4.80, 213, 'aprovada', 1, now);
-    insertOficina.run(6, '22.222.222/0001-22', 'High Torque Asa Sul', 'High Torque Mecânica LTDA', 'SCS Quadra 7', '120', 'Asa Sul', 'Brasília', 'DF', '70307-900', -15.798, -47.892, 4.60, 87, 'aprovada', 1, now);
-    insertOficina.run(7, '33.333.333/0001-33', 'Mecânica do Zé', 'Zé Auto Serviços ME', 'QNM 28 Conj. A', '10', 'Ceilândia', 'Brasília', 'DF', '72215-281', -15.825, -48.107, 4.30, 45, 'aprovada', 1, now);
-    insertOficina.run(8, '44.444.444/0001-44', 'Auto Center Brasília', 'Auto Center Brasília SA', 'SGAN 904', 'S/N', 'Asa Norte', 'Brasília', 'DF', '70790-040', -15.766, -47.880, 0, 0, 'pendente', null, null);
-    insertOficina.run(9, '55.555.555/0001-55', 'Oficina Taguá', 'Oficina Taguá ME', 'CSA 9 Lote 17', '17', 'Taguatinga', 'Brasília', 'DF', '72015-100', -15.832, -48.041, 0, 0, 'pendente', null, null);
+    insertOficina.run(
+      5,
+      '11.111.111/0001-11',
+      'JM Auto Centro',
+      'JM Auto Centro LTDA',
+      'SIA Trecho 3',
+      '45',
+      'SIA',
+      'Brasília',
+      'DF',
+      '71200-030',
+      -15.806,
+      -47.945,
+      4.8,
+      213,
+      'aprovada',
+      1,
+      now
+    );
+    insertOficina.run(
+      6,
+      '22.222.222/0001-22',
+      'High Torque Asa Sul',
+      'High Torque Mecânica LTDA',
+      'SCS Quadra 7',
+      '120',
+      'Asa Sul',
+      'Brasília',
+      'DF',
+      '70307-900',
+      -15.798,
+      -47.892,
+      4.6,
+      87,
+      'aprovada',
+      1,
+      now
+    );
+    insertOficina.run(
+      7,
+      '33.333.333/0001-33',
+      'Mecânica do Zé',
+      'Zé Auto Serviços ME',
+      'QNM 28 Conj. A',
+      '10',
+      'Ceilândia',
+      'Brasília',
+      'DF',
+      '72215-281',
+      -15.825,
+      -48.107,
+      4.3,
+      45,
+      'aprovada',
+      1,
+      now
+    );
+    insertOficina.run(
+      8,
+      '44.444.444/0001-44',
+      'Auto Center Brasília',
+      'Auto Center Brasília SA',
+      'SGAN 904',
+      'S/N',
+      'Asa Norte',
+      'Brasília',
+      'DF',
+      '70790-040',
+      -15.766,
+      -47.88,
+      0,
+      0,
+      'pendente',
+      null,
+      null
+    );
+    insertOficina.run(
+      9,
+      '55.555.555/0001-55',
+      'Oficina Taguá',
+      'Oficina Taguá ME',
+      'CSA 9 Lote 17',
+      '17',
+      'Taguatinga',
+      'Brasília',
+      'DF',
+      '72015-100',
+      -15.832,
+      -48.041,
+      0,
+      0,
+      'pendente',
+      null,
+      null
+    );
 
     // Serviços por oficina
-    insertOfServico.run(5, 1, 'a_partir_de', 80.00, 40);
-    insertOfServico.run(5, 2, 'fixo', 60.00, 30);
-    insertOfServico.run(5, 5, 'fixo', 120.00, 60);
-    insertOfServico.run(5, 6, 'fixo', 80.00, 45);
-    insertOfServico.run(5, 7, 'a_partir_de', 180.00, 90);
-    insertOfServico.run(6, 1, 'a_partir_de', 95.00, 40);
-    insertOfServico.run(6, 3, 'fixo', 150.00, 60);
-    insertOfServico.run(6, 5, 'fixo', 130.00, 60);
-    insertOfServico.run(6, 7, 'a_partir_de', 200.00, 90);
-    insertOfServico.run(6, 10, 'a_partir_de', 180.00, 60);
-    insertOfServico.run(7, 1, 'fixo', 70.00, 40);
-    insertOfServico.run(7, 2, 'fixo', 50.00, 30);
+    insertOfServico.run(5, 1, 'a_partir_de', 80.0, 40);
+    insertOfServico.run(5, 2, 'fixo', 60.0, 30);
+    insertOfServico.run(5, 5, 'fixo', 120.0, 60);
+    insertOfServico.run(5, 6, 'fixo', 80.0, 45);
+    insertOfServico.run(5, 7, 'a_partir_de', 180.0, 90);
+    insertOfServico.run(6, 1, 'a_partir_de', 95.0, 40);
+    insertOfServico.run(6, 3, 'fixo', 150.0, 60);
+    insertOfServico.run(6, 5, 'fixo', 130.0, 60);
+    insertOfServico.run(6, 7, 'a_partir_de', 200.0, 90);
+    insertOfServico.run(6, 10, 'a_partir_de', 180.0, 60);
+    insertOfServico.run(7, 1, 'fixo', 70.0, 40);
+    insertOfServico.run(7, 2, 'fixo', 50.0, 30);
     insertOfServico.run(7, 4, 'orcamento', null, 120);
-    insertOfServico.run(7, 8, 'a_partir_de', 150.00, 45);
+    insertOfServico.run(7, 8, 'a_partir_de', 150.0, 45);
 
     // Disponibilidade
     for (let d = 1; d <= 5; d++) insertDisp.run(5, d, '08:00', '18:00');
@@ -277,11 +389,11 @@ function seedDatabase() {
     insertDisp.run(7, 6, '08:00', '12:00');
 
     // Agendamentos
-    insertAgend.run(2, 5, 1, 1, '2026-08-13 09:00:00', 40, 'solicitado', 80.00);
-    insertAgend.run(2, 5, 1, 5, '2026-08-15 10:00:00', 60, 'confirmado', 120.00);
-    insertAgend.run(3, 6, 3, 7, '2026-08-10 14:00:00', 90, 'confirmado', 200.00);
-    insertAgend.run(4, 7, 4, 2, '2026-07-28 11:00:00', 30, 'concluido', 50.00);
-    insertAgend.run(2, 6, 2, 3, '2026-08-20 15:00:00', 60, 'solicitado', 150.00);
+    insertAgend.run(2, 5, 1, 1, '2026-08-13 09:00:00', 40, 'solicitado', 80.0);
+    insertAgend.run(2, 5, 1, 5, '2026-08-15 10:00:00', 60, 'confirmado', 120.0);
+    insertAgend.run(3, 6, 3, 7, '2026-08-10 14:00:00', 90, 'confirmado', 200.0);
+    insertAgend.run(4, 7, 4, 2, '2026-07-28 11:00:00', 30, 'concluido', 50.0);
+    insertAgend.run(2, 6, 2, 3, '2026-08-20 15:00:00', 60, 'solicitado', 150.0);
 
     // Avaliação
     insertAval.run(4, 4, 7, 5, 'Atendimento ótimo, recomendo!');
