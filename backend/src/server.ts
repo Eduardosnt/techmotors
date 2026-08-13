@@ -1,6 +1,8 @@
+import 'dotenv/config';
+import path from 'path';
+
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
-import path from 'path';
 
 import { initDatabase } from './config/database';
 import authRoutes from './routes/auth';
@@ -28,14 +30,15 @@ app.use((_req: Request, res: Response, next: NextFunction) => {
   // Permissions policy
   res.setHeader('Permissions-Policy', 'geolocation=(self), camera=(), microphone=()');
   // Content Security Policy
-  res.setHeader('Content-Security-Policy',
+  res.setHeader(
+    'Content-Security-Policy',
     "default-src 'self'; " +
-    "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; " +
-    "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; " +
-    "font-src 'self' https://cdn.jsdelivr.net; " +
-    "img-src 'self' data: https://*.openstreetmap.org https://*.tile.openstreetmap.org; " +
-    "frame-src 'self' https://*.openstreetmap.org; " +
-    "connect-src 'self'"
+      "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; " +
+      "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; " +
+      "font-src 'self' https://cdn.jsdelivr.net; " +
+      "img-src 'self' data: https://*.openstreetmap.org https://*.tile.openstreetmap.org; " +
+      "frame-src 'self' https://*.openstreetmap.org; " +
+      "connect-src 'self'"
   );
   next();
 });
@@ -51,9 +54,7 @@ function getRateLimitKey(req: Request) {
       ? forwarded.split(',')[0].trim()
       : req.ip || req.socket.remoteAddress || 'unknown';
 
-  const email = typeof req.body?.email === 'string'
-    ? req.body.email.toLowerCase().trim()
-    : '';
+  const email = typeof req.body?.email === 'string' ? req.body.email.toLowerCase().trim() : '';
 
   return email ? `${ip}:${email}` : ip;
 }
@@ -79,19 +80,24 @@ function rateLimit(maxRequests: number, windowMs: number) {
 }
 
 // Limpa registros expirados a cada 5 minutos
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, val] of rateLimitStore) {
-    if (now > val.resetTime) rateLimitStore.delete(key);
-  }
-}, 5 * 60 * 1000);
+setInterval(
+  () => {
+    const now = Date.now();
+    for (const [key, val] of rateLimitStore) {
+      if (now > val.resetTime) rateLimitStore.delete(key);
+    }
+  },
+  5 * 60 * 1000
+);
 
 // Middleware
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN || '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+);
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -99,10 +105,11 @@ app.use(express.urlencoded({ extended: true }));
 // Remove tags HTML perigosas de inputs string
 function sanitizeValue(val: any): any {
   if (typeof val === 'string') {
-    return val.replace(/<script[^>]*>.*?<\/script>/gi, '')
-              .replace(/<iframe[^>]*>.*?<\/iframe>/gi, '')
-              .replace(/on\w+\s*=\s*"[^"]*"/gi, '')
-              .replace(/on\w+\s*=\s*'[^']*'/gi, '');
+    return val
+      .replace(/<script[^>]*>.*?<\/script>/gi, '')
+      .replace(/<iframe[^>]*>.*?<\/iframe>/gi, '')
+      .replace(/on\w+\s*=\s*"[^"]*"/gi, '')
+      .replace(/on\w+\s*=\s*'[^']*'/gi, '');
   }
   if (Array.isArray(val)) return val.map(sanitizeValue);
   if (val && typeof val === 'object') {
@@ -140,10 +147,13 @@ app.get('*', (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`✅ TechMotors API rodando em http://localhost:${PORT}`);
-  console.log(`📁 Frontend servido de: ${path.join(__dirname, '../../frontend')}`);
-  console.log(`💾 Banco SQLite: backend/data/techmotors.db`);
-});
+// Inicia o servidor apenas quando executado diretamente (não em testes)
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`✅ TechMotors API rodando em http://localhost:${PORT}`);
+    console.log(`📁 Frontend servido de: ${path.join(__dirname, '../../frontend')}`);
+    console.log(`💾 Banco SQLite: backend/data/techmotors.db`);
+  });
+}
 
 export default app;

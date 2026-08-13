@@ -13,6 +13,8 @@ Sistema web completo para agendamento de serviços automotivos, conectando clien
 | UI | Bootstrap 5 + Bootstrap Icons |
 | E-mail | Nodemailer (Gmail SMTP) |
 | Upload | Multer |
+| Lint/Format | ESLint + Prettier |
+| Git hooks | Lefthook (pré-commit) |
 
 ## Funcionalidades
 
@@ -40,7 +42,7 @@ Sistema web completo para agendamento de serviços automotivos, conectando clien
 ### Administrador
 - Dashboard com estatísticas completas
 - Aprovação/rejeição de oficinas
-- Gestão de usuários (busca, filtros, detalhes, bloquear)
+- Gestão de usuários (busca, filtros, detalhes, alterar status)
 - Catálogo global de serviços
 - Ranking de oficinas (por nota e volume)
 - Moderação de avaliações
@@ -54,34 +56,70 @@ Sistema web completo para agendamento de serviços automotivos, conectando clien
 - Política de senha forte
 - Recuperação de senha por e-mail com token temporário
 - Upload com validação de tipo e tamanho
+- JWT_SECRET obrigatório via variável de ambiente (sem fallback)
+- Verificação de pertencimento (ownership) nas rotas de chat
 
 ## Como Rodar
 
 ### Pré-requisitos
 - Node.js 18+
+- Git
 
 ### Instalação
 
 ```bash
-cd backend
+git clone <url-do-repositorio>
+cd techmotors/backend
 npm install
 ```
 
-### Configuração (opcional)
+### Configuração (obrigatória)
 
-Copie `.env.example` para `.env` e preencha:
+Copie `.env.example` para `.env` e preencha os valores:
+
 ```bash
 cp .env.example .env
 ```
 
-### Iniciar
+O `JWT_SECRET` é **obrigatório** — o servidor não inicia sem ele.
+
+### Iniciar em desenvolvimento
 
 ```bash
 cd backend
 npm run dev
 ```
 
+### Build + produção
+
+```bash
+cd backend
+npm run build
+npm start
+```
+
 Acesse **http://localhost:3000**
+
+### Lint e formatação
+
+```bash
+npm run lint        # verifica erros
+npm run lint:fix    # corrige automaticamente
+npm run format      # formata com prettier
+npm run format:check # verifica formatação sem alterar
+```
+
+### Git hooks (Lefthook)
+
+O Lefthook roda automaticamente no `pre-commit`:
+- ESLint
+- Prettier format check
+- TypeScript typecheck (tsc)
+
+Para instalar os hooks após clonar:
+```bash
+npx lefthook install
+```
 
 ## Contas de Teste
 
@@ -111,6 +149,8 @@ techmotors/
 │   │       └── chat.ts          Chatbot + mensagens cliente↔oficina
 │   ├── data/                    Banco SQLite (auto-gerado)
 │   ├── .env.example             Variáveis de ambiente
+│   ├── .eslintrc.json           Configuração ESLint
+│   ├── .prettierrc              Configuração Prettier
 │   ├── package.json
 │   └── tsconfig.json
 ├── frontend/
@@ -125,13 +165,9 @@ techmotors/
 │       ├── pages-cliente.js     Todas as telas do cliente
 │       ├── pages-oficina.js     Todas as telas da oficina
 │       └── pages-admin.js       Todas as telas do admin
-├── docs/
-│   ├── 01-DER-banco-de-dados.md
-│   ├── 02-casos-de-uso.md
-│   ├── 03-documentacao-api.md
-│   ├── 04-telas-do-sistema.md
-│   ├── 05-justificativa-problema.md
-│   └── 06-seguranca.md
+├── docs/                        Documentação completa (TCC)
+├── lefthook.yml                 Hooks de pré-commit
+├── .editorconfig                Padrões de editor
 └── README.md
 ```
 

@@ -1,7 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'techmotors_secret_key_2026';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET não definido. Configure a variável de ambiente antes de iniciar o servidor.');
+}
+
+// Re-export como string garantida para uso interno
+const SECRET: string = JWT_SECRET;
 
 export interface AuthUser {
   id: number;
@@ -16,7 +22,7 @@ export interface AuthRequest extends Request {
 }
 
 export function gerarToken(user: AuthUser): string {
-  return jwt.sign(user, JWT_SECRET, { expiresIn: '24h' });
+  return jwt.sign(user as object, SECRET, { expiresIn: '24h' });
 }
 
 export function autenticar(req: AuthRequest, res: Response, next: NextFunction): void {
@@ -26,7 +32,7 @@ export function autenticar(req: AuthRequest, res: Response, next: NextFunction):
     return;
   }
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as AuthUser;
+    const decoded = jwt.verify(token, SECRET) as unknown as AuthUser;
     req.user = decoded;
     next();
   } catch {

@@ -1,0 +1,15 @@
+# Lefthook — hooks de qualidade pré-commit
+# Documentação: https://github.com/evilmartians/lefthook
+
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      glob: "backend/src/**/*.ts"
+      run: npm run lint --prefix backend
+    format-check:
+      glob: "backend/src/**/*.ts"
+      run: npm run format:check --prefix backend
+    typecheck:
+      glob: "backend/src/**/*.ts"
+      run: npm run build --prefix backend

@@ -87,7 +87,7 @@
 | POST | `/admin/rejeitar/:id` | Rejeitar oficina (com motivo) |
 | GET | `/admin/oficina/:id` | Detalhes de uma oficina |
 | GET | `/admin/usuarios?tipo=&status=` | Listar usuários |
-| POST | `/admin/usuarios/:id/status` | Alterar status do usuário |
+| PUT | `/admin/usuarios/:id/status` | Alterar status do usuário |
 
 ---
 
