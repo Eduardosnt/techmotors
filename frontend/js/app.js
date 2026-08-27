@@ -34,7 +34,6 @@ function renderNavbar() {
       links = `
         <li class="nav-item"><a class="nav-link" href="#oficina-agenda"><i class="bi bi-calendar-week"></i> Agenda</a></li>
         <li class="nav-item"><a class="nav-link" href="#oficina-solicitacoes"><i class="bi bi-inbox"></i> Solicitações</a></li>
-        <li class="nav-item"><a class="nav-link" href="#oficina-mensagens"><i class="bi bi-chat-left-text"></i> Mensagens</a></li>
         <li class="nav-item"><a class="nav-link" href="#oficina-disponibilidade"><i class="bi bi-clock"></i> Disponibilidade</a></li>
         <li class="nav-item"><a class="nav-link" href="#oficina-bloqueios"><i class="bi bi-ban"></i> Bloqueios</a></li>
         <li class="nav-item"><a class="nav-link" href="#oficina-servicos"><i class="bi bi-tools"></i> Serviços</a></li>
@@ -195,7 +194,6 @@ async function handleRoute() {
       // Oficina
       case 'oficina-agenda': await renderOficinaAgenda(content, params); break;
       case 'oficina-solicitacoes': await renderOficinaSolicitacoes(content, params); break;
-      case 'oficina-mensagens': await renderOficinaMensagens(content); break;
       case 'oficina-disponibilidade': await renderOficinaDisponibilidade(content); break;
       case 'oficina-bloqueios': await renderOficinaBloqueios(content); break;
       case 'oficina-servicos': await renderOficinaServicos(content); break;

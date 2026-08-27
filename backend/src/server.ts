@@ -9,7 +9,6 @@ import authRoutes from './routes/auth';
 import clienteRoutes from './routes/cliente';
 import oficinaRoutes from './routes/oficina';
 import adminRoutes from './routes/admin';
-import chatRoutes from './routes/chat';
 
 // Inicializar banco de dados (cria tabelas + seed se necessário)
 initDatabase();
@@ -138,7 +137,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/cliente', clienteRoutes);
 app.use('/api/oficina', oficinaRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/chat', chatRoutes);
 
 // Fallback: servir o frontend para qualquer rota não-API
 app.get('*', (req, res) => {

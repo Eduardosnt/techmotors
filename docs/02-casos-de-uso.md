@@ -33,8 +33,6 @@
 │  │  • UC13 - Consultar histórico de serviços                      │     │
 │  │  • UC14 - Gerar comprovante/recibo                              │     │
 │  │  • UC15 - Receber notificações                                  │     │
-│  │  • UC16 - Conversar com chatbot                                 │     │
-│  │  • UC17 - Solicitar atendente (chat com oficina)                │     │
 │  │  • UC18 - Alternar tema (claro/escuro/sistema)                  │     │
 │  │  • UC19 - Ver localização da oficina no mapa                    │     │
 │  │  • UC20 - Ver todas as avaliações de uma oficina                │     │
@@ -56,7 +54,6 @@
 │  │  • UC31 - Cancelar agendamento confirmado                       │     │
 │  │  • UC32 - Visualizar painel de métricas                         │     │
 │  │  • UC33 - Consultar histórico de atendimentos                   │     │
-│  │  • UC34 - Responder mensagens de clientes                       │     │
 │  │  • UC35 - Receber notificações                                  │     │
 │  └─────────────────────────────────────────────────────────────────┘     │
 │                                                                           │
@@ -98,13 +95,3 @@
 | | 2. Clica no agendamento → vê detalhes |
 | | 3. Clica "Confirmar" ou "Recusar" (com motivo) |
 | **Pós-condição** | Status atualizado; cliente recebe notificação |
-
-### UC16/UC17 — Chatbot + Atendente
-
-| Campo | Descrição |
-|-------|-----------|
-| **Ator** | Cliente, Bot, Oficina |
-| **Fluxo** | 1. Cliente abre chat → bot responde automaticamente |
-| | 2. Cliente digita "atendente" → bot lista oficinas |
-| | 3. Cliente escolhe oficina → conversa transferida |
-| | 4. Oficina vê conversa na aba "Mensagens" e responde |
