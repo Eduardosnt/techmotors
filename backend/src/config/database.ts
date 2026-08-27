@@ -1,8 +1,18 @@
 import fs from 'fs';
 import path from 'path';
+import { DatabaseSync, StatementSync } from 'node:sqlite';
 
 import bcrypt from 'bcryptjs';
-import Database from 'better-sqlite3';
+// SQLite nativo do Node (>=22). Evita dependência nativa que exige compilação (node-gyp/Python).
+
+// Silencia apenas o aviso "SQLite is an experimental feature" do node:sqlite,
+// preservando os demais warnings do processo.
+const originalEmitWarning = process.emitWarning.bind(process);
+process.emitWarning = ((warning: string | Error, ...args: unknown[]) => {
+  const message = typeof warning === 'string' ? warning : warning?.message;
+  if (message && message.includes('SQLite is an experimental feature')) return;
+  return (originalEmitWarning as (...a: unknown[]) => void)(warning, ...args);
+}) as typeof process.emitWarning;
 
 const DB_PATH = path.join(__dirname, '../../data/techmotors.db');
 
@@ -12,7 +22,73 @@ if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-const db: import('better-sqlite3').Database = Database(DB_PATH);
+// ─── ADAPTADOR node:sqlite → API estilo better-sqlite3 ──────────────
+// Mantém a interface usada pelas rotas (prepare/get/all/run, pragma,
+// transaction, lastInsertRowid) sem exigir módulo nativo.
+
+type RunResult = { changes: number; lastInsertRowid: number | bigint };
+
+// node:sqlite não aceita `undefined` como bind; normalizamos para `null`.
+function normalizeParams(params: unknown[]): unknown[] {
+  return params.map((p) => (p === undefined ? null : p));
+}
+
+class PreparedStatement {
+  constructor(private stmt: StatementSync) {}
+
+  run(...params: unknown[]): RunResult {
+    const r = this.stmt.run(...(normalizeParams(params) as never[]));
+    return { changes: Number(r.changes), lastInsertRowid: r.lastInsertRowid as number | bigint };
+  }
+
+  get(...params: unknown[]): unknown {
+    return this.stmt.get(...(normalizeParams(params) as never[]));
+  }
+
+  all(...params: unknown[]): unknown[] {
+    return this.stmt.all(...(normalizeParams(params) as never[]));
+  }
+}
+
+class DatabaseAdapter {
+  private raw: DatabaseSync;
+
+  constructor(dbPath: string) {
+    this.raw = new DatabaseSync(dbPath);
+  }
+
+  prepare(sql: string): PreparedStatement {
+    return new PreparedStatement(this.raw.prepare(sql));
+  }
+
+  exec(sql: string): void {
+    this.raw.exec(sql);
+  }
+
+  // Compat: better-sqlite3 usa db.pragma('chave = valor')
+  pragma(source: string): void {
+    this.raw.exec(`PRAGMA ${source}`);
+  }
+
+  // Compat: retorna uma função que executa fn dentro de uma transação.
+  transaction<T extends (...args: unknown[]) => unknown>(fn: T): T {
+    const raw = this.raw;
+    const wrapped = (...args: unknown[]): unknown => {
+      raw.exec('BEGIN');
+      try {
+        const result = fn(...args);
+        raw.exec('COMMIT');
+        return result;
+      } catch (err) {
+        raw.exec('ROLLBACK');
+        throw err;
+      }
+    };
+    return wrapped as T;
+  }
+}
+
+const db = new DatabaseAdapter(DB_PATH);
 
 // Configurações de performance
 db.pragma('journal_mode = WAL');
