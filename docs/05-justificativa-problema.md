@@ -35,7 +35,6 @@ A **TechMotors** é uma plataforma web de agendamentos automotivos que conecta c
 | Agenda visual para oficina | Substitui caderno/planilha |
 | Notificações automáticas | Reduz no-shows e melhora comunicação |
 | Histórico do veículo | Prontuário digital acessível |
-| Chat integrado (bot + humano) | Tira dúvidas sem sair da plataforma |
 | Painel de métricas | Oficina acompanha performance |
 
 ## 4. Objetivos
@@ -49,8 +48,7 @@ Desenvolver uma plataforma web para agendamento de serviços automotivos que fac
 3. Criar fluxo de agendamento intuitivo com seleção de serviço, data, horário e veículo
 4. Implementar sistema de avaliações para promover transparência e qualidade
 5. Desenvolver painel de gestão para oficinas com agenda, métricas e histórico
-6. Integrar chatbot com regras predefinidas e opção de atendimento humano
-7. Garantir experiência responsiva e acessível em dispositivos móveis
+6. Garantir experiência responsiva e acessível em dispositivos móveis
 
 ## 5. Justificativa
 
@@ -80,7 +78,6 @@ O projeto se justifica por:
 | Geolocalização | API nativa do navegador | Sem custo de API externa |
 | Mapa | OpenStreetMap Embed | Open-source, sem chave de API |
 | E-mail | Nodemailer + Gmail SMTP | Recuperação de senha funcional |
-| Chat | Implementação própria (rule-based) | Sem dependência de API paga |
 
 ## 8. Metodologia
 

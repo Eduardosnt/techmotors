@@ -95,26 +95,18 @@
 │  criado_em                   │
 └──────────────────────────────┘
 
-┌──────────────────────────────┐       ┌──────────────────────────────┐
-│       NOTIFICACOES           │       │         CONVERSAS            │
-├──────────────────────────────┤       ├──────────────────────────────┤
-│ *id (PK)                     │       │ *id (PK)                     │
-│  usuario_id (FK)             │       │  cliente_id (FK)             │
-│  tipo                        │       │  oficina_id (FK)             │
-│  titulo                      │       │  status (bot|atendente|enc.) │
-│  mensagem                    │       │  criado_em                   │
-│  lida                        │       │  atualizado_em               │
-│  link                        │       └──────────────────────────────┘
+┌──────────────────────────────┐
+│       NOTIFICACOES           │
+├──────────────────────────────┤
+│ *id (PK)                     │
+│  usuario_id (FK)             │
+│  tipo                        │
+│  titulo                      │
+│  mensagem                    │
+│  lida                        │
+│  link                        │
 │  criado_em                   │
-└──────────────────────────────┘       ┌──────────────────────────────┐
-                                       │         MENSAGENS            │
-                                       ├──────────────────────────────┤
-                                       │ *id (PK)                     │
-                                       │  conversa_id (FK)            │
-                                       │  remetente (cliente|bot|ofi) │
-                                       │  conteudo                    │
-                                       │  criado_em                   │
-                                       └──────────────────────────────┘
+└──────────────────────────────┘
 ```
 
 ## Relacionamentos
@@ -134,8 +126,6 @@
 | agendamentos | avaliacoes | 1:1 | Cada agendamento tem no máximo 1 avaliação |
 | clientes | favoritos | 1:N | Um cliente pode favoritar várias oficinas |
 | usuarios | notificacoes | 1:N | Um usuário recebe várias notificações |
-| clientes | conversas | 1:N | Um cliente pode ter várias conversas |
-| conversas | mensagens | 1:N | Uma conversa tem várias mensagens |
 
 ## Regras de Negócio Implementadas no Banco
 
@@ -143,5 +133,5 @@
 2. **Uma avaliação por agendamento**: `agendamento_id UNIQUE` em avaliacoes
 3. **Favorito único**: `UNIQUE(cliente_id, oficina_id)` — impede favoritar a mesma oficina duas vezes
 4. **Status controlado**: CHECK constraints garantem valores válidos
-5. **Cascata**: DELETE CASCADE em veículos, mensagens — mantém integridade
+5. **Cascata**: DELETE CASCADE em veículos — mantém integridade
 6. **Placa única**: veículos não podem ter placa duplicada no sistema

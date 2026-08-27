@@ -26,7 +26,6 @@ Sistema web completo para agendamento de serviços automotivos, conectando clien
 - Avaliações (1-5 estrelas + comentário)
 - Notificações em tempo real
 - Comprovante/recibo para impressão
-- Chat com bot + atendente da oficina
 - Gerenciamento de veículos (placa antiga e Mercosul)
 - Tema claro/escuro/sistema
 
@@ -36,7 +35,6 @@ Sistema web completo para agendamento de serviços automotivos, conectando clien
 - Configuração de disponibilidade e bloqueios
 - Gerenciamento de serviços e preços
 - Painel de métricas (dashboard + receita + histórico)
-- Chat com clientes
 - Notificações de novos agendamentos
 
 ### Administrador
@@ -57,7 +55,6 @@ Sistema web completo para agendamento de serviços automotivos, conectando clien
 - Recuperação de senha por e-mail com token temporário
 - Upload com validação de tipo e tamanho
 - JWT_SECRET obrigatório via variável de ambiente (sem fallback)
-- Verificação de pertencimento (ownership) nas rotas de chat
 
 ## Como Rodar
 
@@ -145,8 +142,7 @@ techmotors/
 │   │       ├── auth.ts          Login, cadastro, perfil, foto, reset senha
 │   │       ├── cliente.ts       Busca, agendamento, veículos, favoritos, histórico
 │   │       ├── oficina.ts       Agenda, solicitações, métricas, notificações
-│   │       ├── admin.ts         Dashboard, aprovações, catálogo, ranking, moderação
-│   │       └── chat.ts          Chatbot + mensagens cliente↔oficina
+│   │       └── admin.ts         Dashboard, aprovações, catálogo, ranking, moderação
 │   ├── data/                    Banco SQLite (auto-gerado)
 │   ├── .env.example             Variáveis de ambiente
 │   ├── .eslintrc.json           Configuração ESLint
@@ -160,7 +156,6 @@ techmotors/
 │   └── js/
 │       ├── api.js               HTTP helper + utilitários
 │       ├── app.js               Router + navbar + tema
-│       ├── chat-widget.js       Widget de chat flutuante
 │       ├── pages-auth.js        Login, cadastro, perfil, recuperação
 │       ├── pages-cliente.js     Todas as telas do cliente
 │       ├── pages-oficina.js     Todas as telas da oficina

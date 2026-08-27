@@ -148,26 +148,6 @@ export function initDatabase() {
       FOREIGN KEY (oficina_id) REFERENCES oficinas(usuario_id)
     );
 
-    CREATE TABLE IF NOT EXISTS conversas (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      cliente_id INTEGER NOT NULL,
-      oficina_id INTEGER,
-      status TEXT DEFAULT 'bot' CHECK(status IN ('bot','atendente','encerrada')),
-      criado_em TEXT DEFAULT (datetime('now','localtime')),
-      atualizado_em TEXT DEFAULT (datetime('now','localtime')),
-      FOREIGN KEY (cliente_id) REFERENCES usuarios(id),
-      FOREIGN KEY (oficina_id) REFERENCES oficinas(usuario_id)
-    );
-
-    CREATE TABLE IF NOT EXISTS mensagens (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      conversa_id INTEGER NOT NULL,
-      remetente TEXT NOT NULL CHECK(remetente IN ('cliente','bot','oficina')),
-      conteudo TEXT NOT NULL,
-      criado_em TEXT DEFAULT (datetime('now','localtime')),
-      FOREIGN KEY (conversa_id) REFERENCES conversas(id) ON DELETE CASCADE
-    );
-
     CREATE TABLE IF NOT EXISTS favoritos (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       cliente_id INTEGER NOT NULL,

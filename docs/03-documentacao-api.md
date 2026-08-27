@@ -91,18 +91,6 @@
 
 ---
 
-## Chat (`/api/chat`) — Requer auth (qualquer tipo)
-
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| GET | `/chat/conversas` | Listar conversas do usuário |
-| POST | `/chat/iniciar` | Iniciar ou retomar conversa com bot |
-| POST | `/chat/mensagem` | Enviar mensagem (bot responde automaticamente) |
-| GET | `/chat/mensagens/:conversa_id` | Buscar mensagens de uma conversa |
-| POST | `/chat/encerrar/:conversa_id` | Encerrar conversa |
-
----
-
 ## Códigos de Status HTTP
 
 | Código | Significado |

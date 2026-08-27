@@ -135,8 +135,7 @@ backend/src/
     ├── auth.ts            # Cadastro, login, perfil, reset senha
     ├── cliente.ts         # Rotas exclusivas do cliente
     ├── oficina.ts         # Rotas exclusivas da oficina
-    ├── admin.ts           # Painel administrativo
-    └── chat.ts            # Chatbot e mensagens
+    └── admin.ts           # Painel administrativo
 ```
 
 ## Convenções

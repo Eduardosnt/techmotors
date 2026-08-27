@@ -38,7 +38,6 @@ Abaixo estão listadas todas as telas do sistema com instruções de como acess�
 | 19 | Comprovante | `#cliente-comprovante?id=4` | Recibo do agendamento para impressão |
 | 20 | Avaliar | `#cliente-avaliar?id=4` | Formulário de 1-5 estrelas + comentário |
 | 21 | Perfil | `#perfil` | Edição de dados, foto, senha |
-| 22 | Chat (widget) | Botão flutuante inferior direito | Chatbot + transferência para atendente |
 
 ---
 
@@ -49,7 +48,6 @@ Abaixo estão listadas todas as telas do sistema com instruções de como acess�
 | 23 | Agenda Semanal | `#oficina-agenda` | Grade horária com agendamentos clicáveis |
 | 24 | Detalhes (modal) | Clicar em slot da agenda | Modal com info do cliente, serviço, veículo, ações |
 | 25 | Solicitações | `#oficina-solicitacoes` | Abas por status, confirmar/recusar/concluir |
-| 26 | Mensagens | `#oficina-mensagens` | Lista de conversas + painel de chat |
 | 27 | Disponibilidade | `#oficina-disponibilidade` | Configuração de horários por dia da semana |
 | 28 | Bloqueios | `#oficina-bloqueios` | Criação de períodos bloqueados |
 | 29 | Serviços | `#oficina-servicos` | CRUD de serviços com preço e duração |
