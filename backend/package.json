@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "TechMotors - API REST para agendamentos automotivos",
   "main": "dist/server.js",
+  "engines": {
+    "node": ">=22.5.0"
+  },
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",

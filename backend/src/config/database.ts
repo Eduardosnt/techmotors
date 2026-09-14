@@ -14,7 +14,9 @@ process.emitWarning = ((warning: string | Error, ...args: unknown[]) => {
   return (originalEmitWarning as (...a: unknown[]) => void)(warning, ...args);
 }) as typeof process.emitWarning;
 
-const DB_PATH = path.join(__dirname, '../../data/techmotors.db');
+// Caminho do banco configurável via env (em produção aponta para o disco
+// persistente). Fallback: pasta local backend/data/techmotors.db.
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, '../../data/techmotors.db');
 
 // Criar diretório data se não existir
 const dataDir = path.dirname(DB_PATH);

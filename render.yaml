@@ -1,0 +1,44 @@
+# Render Blueprint — TechMotors
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Este arquivo permite criar o serviço automaticamente pelo Render
+# (Dashboard > New > Blueprint > selecione este repositório).
+
+services:
+  - type: web
+    name: techmotors
+    runtime: node
+    plan: free
+    region: oregon # troque para a região mais próxima, se preferir
+    rootDir: backend # o app (package.json) fica em backend/
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+
+    # Disco persistente para o banco SQLite não sumir entre deploys/reinícios.
+    # OBS: discos persistentes exigem plano pago (Starter+). No plano free,
+    # o SQLite funciona mas os dados são resetados a cada deploy.
+    disk:
+      name: techmotors-data
+      mountPath: /var/data
+      sizeGB: 1
+
+    envVars:
+      - key: NODE_VERSION
+        value: 22.9.0
+      - key: NODE_ENV
+        value: production
+      # Caminho do SQLite dentro do disco persistente
+      - key: DB_PATH
+        value: /var/data/techmotors.db
+      # JWT_SECRET: o Render gera um valor aleatório e seguro
+      - key: JWT_SECRET
+        generateValue: true
+      # Restrinja o CORS ao seu domínio em produção (ex.: https://techmotors.onrender.com)
+      - key: CORS_ORIGIN
+        sync: false
+      # Configuração de e-mail (opcional — recuperação de senha)
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
